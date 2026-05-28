@@ -118,6 +118,12 @@ npm run dev
 ```
 Backend runs on `http://localhost:5000`
 
+Public `/api/auth/register` behavior:
+- Ignores privileged role assignment from public clients
+- Creates `faculty` users only
+- Sets new public registrations as inactive (pending admin activation)
+- Allows privileged user creation only for authenticated `super_admin`/`admin`
+
 ### 5) Run Frontend
 ```bash
 cd frontend
@@ -232,3 +238,7 @@ Frontend runs on `http://localhost:5173`
   - No API key mode falls back to local heuristic AI utilities
 - API docs available at `/api/docs` and JSON spec at `/api/docs.json`.
 - Scheduler auto-runs unless `ENABLE_SCHEDULER=false`.
+- Backend smoke and load checks:
+  - `cd backend && npm run qa:register`
+  - `cd backend && npm run qa:smoke`
+  - `cd backend && npm run load:check`

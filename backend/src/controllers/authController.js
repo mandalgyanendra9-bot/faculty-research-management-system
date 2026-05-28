@@ -5,23 +5,63 @@ const { generateToken } = require("../utils/token");
 const catchAsync = require("../utils/catchAsync");
 const { createAuditLog } = require("../services/auditService");
 
+const PRIVILEGED_ROLES = new Set(["super_admin", "admin", "hod_dean", "research_coordinator"]);
+
 const register = async (req, res) => {
   const { name, email, password, role, department, designation } = req.body;
+  const requestedRole = role || "faculty";
+  const actorRole = req.user?.role || null;
+  const isPrivilegedRequest = PRIVILEGED_ROLES.has(requestedRole);
+  const isAdminActor = actorRole === "super_admin" || actorRole === "admin";
+
+  if (!actorRole && role) {
+    return res.status(403).json({
+      success: false,
+      message: "Role self-assignment is not allowed in public registration",
+    });
+  }
+
+  if (isPrivilegedRequest && !isAdminActor) {
+    return res.status(403).json({
+      success: false,
+      message: "Only super admin or admin can create privileged users",
+    });
+  }
 
   const exists = await User.findOne({ email });
   if (exists) return res.status(400).json({ success: false, message: "Email already exists" });
+
+  const finalRole = actorRole ? requestedRole : "faculty";
+  const isActive = actorRole ? req.body.isActive ?? true : false;
 
   const user = await User.create({
     name,
     email,
     password,
-    role: role || "faculty",
+    role: finalRole,
     department,
     designation,
+    isActive,
   });
 
   if (user.role === "faculty") {
     await FacultyProfile.create({ user: user._id });
+  }
+
+  if (!isActive) {
+    return res.status(201).json({
+      success: true,
+      message: "Registration submitted. Account pending admin approval.",
+      data: {
+        user: {
+          id: user._id,
+          name: user.name,
+          email: user.email,
+          role: user.role,
+          isActive: user.isActive,
+        },
+      },
+    });
   }
 
   const token = generateToken({ id: user._id, role: user.role });
@@ -35,6 +75,7 @@ const register = async (req, res) => {
         name: user.name,
         email: user.email,
         role: user.role,
+        isActive: user.isActive,
       },
     },
   });

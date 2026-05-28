@@ -9,7 +9,9 @@
     "start": "node src/server.js",
     "seed": "node src/seeds/seed.js",
     "seed:admin": "node src/seeds/upsertAdmin.js",
-    "qa:smoke": "node src/scripts/qaApiSmoke.js"
+    "qa:smoke": "node src/scripts/qaApiSmoke.js",
+    "qa:register": "node src/scripts/registerSecuritySmoke.js",
+    "load:check": "node src/scripts/loadCheck.js"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",
