@@ -2,7 +2,7 @@
 const API_BASE = process.env.QA_API_BASE || "http://localhost:5000/api";
 
 const roleUsers = {
-  super_admin: { email: "admin@frms.com", password: "Admin@123" },
+  super_admin: { email: "mandalgyanendra9@gmail.com", password: "Admin@123" },
   admin: { email: "admin.user@frms.com", password: "AdminUser@123" },
   hod_dean: { email: "hod.cse@frms.com", password: "Hod@12345" },
   research_coordinator: { email: "coordinator@frms.com", password: "Coord@123" },

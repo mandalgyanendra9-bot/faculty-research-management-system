@@ -127,7 +127,7 @@ Frontend runs on `http://localhost:5173`
 
 ## Demo Credentials (All Roles)
 - Super Admin
-  - Email: `admin@frms.com`
+  - Email: `mandalgyanendra9@gmail.com`
   - Password: `Admin@123`
 - Admin
   - Email: `admin.user@frms.com`
@@ -177,8 +177,7 @@ Frontend runs on `http://localhost:5173`
 2. Set project root to `frontend`.
 3. Vercel config file is included at `frontend/vercel.json`.
 4. Add environment variable:
-   - `VITE_API_BASE_URL=https://<render-backend-domain>/api`
-   - `VITE_API_ROOT=https://<render-backend-domain>`
+   - `VITE_API_URL=https://<render-backend-domain>/api`
 5. Deploy and verify login/report download flows.
 
 ### MongoDB Atlas
@@ -187,6 +186,7 @@ Frontend runs on `http://localhost:5173`
 3. Set backend `MONGO_URI` to Atlas connection string.
 4. Run backend seed once using deployed shell or local with Atlas URI:
    - `cd backend && npm run seed`
+   - For production-safe admin upsert only (without wiping data): `npm run seed:admin`
 
 ## Environment Variables
 

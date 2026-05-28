@@ -54,9 +54,10 @@ const seed = async () => {
   const [superAdmin, adminUser, hod, coordinator, faculty1, faculty2] = await Promise.all([
     User.create({
       name: "Super Admin",
-      email: "admin@frms.com",
+      email: "mandalgyanendra9@gmail.com",
       password: "Admin@123",
       role: "super_admin",
+      isActive: true,
       department: departments[0]._id,
       designation: "System Administrator",
     }),
@@ -293,7 +294,7 @@ const seed = async () => {
   // eslint-disable-next-line no-console
   console.log("Seed data created successfully");
   // eslint-disable-next-line no-console
-  console.log("Admin login => email: admin@frms.com password: Admin@123");
+  console.log("Admin login => email: mandalgyanendra9@gmail.com password: Admin@123");
   await mongoose.disconnect();
 };
 
