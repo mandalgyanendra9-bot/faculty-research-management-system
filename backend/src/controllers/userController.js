@@ -2,6 +2,7 @@ const User = require("../models/User");
 const Department = require("../models/Department");
 const Lookup = require("../models/Lookup");
 const catchAsync = require("../utils/catchAsync");
+const { ensureRegistrationDefaults } = require("../services/registrationDefaultsService");
 
 const listUsers = async (req, res) => {
   const { role, department, active, search = "" } = req.query;
@@ -52,6 +53,7 @@ const createDepartment = async (req, res) => {
 };
 
 const listDepartments = async (_req, res) => {
+  await ensureRegistrationDefaults();
   const depts = await Department.find().populate("hod", "name email").sort({ name: 1 });
   res.json({ success: true, data: depts });
 };
@@ -77,6 +79,7 @@ const createLookup = async (req, res) => {
 };
 
 const listLookups = async (req, res) => {
+  await ensureRegistrationDefaults();
   const query = req.query.type ? { type: req.query.type } : {};
   const items = await Lookup.find(query).sort({ value: 1 });
   res.json({ success: true, data: items });

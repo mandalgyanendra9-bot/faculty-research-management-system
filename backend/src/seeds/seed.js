@@ -40,12 +40,17 @@ const seed = async () => {
     { name: "Computer Science and Engineering", code: "CSE", school: "Engineering" },
     { name: "Electronics and Communication", code: "ECE", school: "Engineering" },
     { name: "Mechanical Engineering", code: "MECH", school: "Engineering" },
+    { name: "Civil Engineering", code: "CIVIL", school: "Engineering" },
+    { name: "Electrical Engineering", code: "EEE", school: "Engineering" },
+    { name: "Information Technology", code: "IT", school: "Engineering" },
   ]);
 
   await Lookup.insertMany([
     { type: "designation", value: "Assistant Professor" },
     { type: "designation", value: "Associate Professor" },
     { type: "designation", value: "Professor" },
+    { type: "designation", value: "Research Scholar" },
+    { type: "designation", value: "Lab Instructor" },
     { type: "research_category", value: "Machine Learning" },
     { type: "research_category", value: "Embedded Systems" },
     { type: "research_category", value: "Sustainable Manufacturing" },

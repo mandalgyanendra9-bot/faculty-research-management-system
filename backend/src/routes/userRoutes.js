@@ -17,6 +17,7 @@ const { protect, authorize } = require("../middlewares/auth");
 const router = express.Router();
 
 router.get("/departments/list", listDepartments);
+router.get("/lookups", listLookups);
 
 router.use(protect);
 
@@ -28,7 +29,6 @@ router.post("/departments", authorize("super_admin", "admin"), createDepartment)
 router.put("/departments/:id", authorize("super_admin", "admin"), updateDepartment);
 router.delete("/departments/:id", authorize("super_admin"), removeDepartment);
 
-router.get("/lookups", listLookups);
 router.post("/lookups", authorize("super_admin", "admin"), createLookup);
 router.put("/lookups/:id", authorize("super_admin", "admin"), updateLookup);
 router.delete("/lookups/:id", authorize("super_admin"), deleteLookup);

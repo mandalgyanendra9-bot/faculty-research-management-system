@@ -8,6 +8,8 @@ const RegisterPage = () => {
   const navigate = useNavigate();
   const { register } = useAuth();
   const [departments, setDepartments] = useState([]);
+  const [designations, setDesignations] = useState([]);
+  const [loadingLookups, setLoadingLookups] = useState(true);
   const [form, setForm] = useState({
     name: "",
     email: "",
@@ -20,11 +22,19 @@ const RegisterPage = () => {
 
   useEffect(() => {
     const load = async () => {
+      setLoadingLookups(true);
       try {
-        const { data } = await api.get("/users/departments/list");
-        setDepartments(data.data || []);
+        const [departmentsRes, designationsRes] = await Promise.all([
+          api.get("/users/departments/list"),
+          api.get("/users/lookups", { params: { type: "designation" } }),
+        ]);
+        setDepartments(departmentsRes.data.data || []);
+        setDesignations((designationsRes.data.data || []).map((item) => item.value));
       } catch (_error) {
         setDepartments([]);
+        setDesignations([]);
+      } finally {
+        setLoadingLookups(false);
       }
     };
     load();
@@ -109,8 +119,15 @@ const RegisterPage = () => {
               className="w-full rounded-lg border px-3 py-2"
               value={form.department}
               onChange={(e) => setForm((prev) => ({ ...prev, department: e.target.value }))}
+              disabled={loadingLookups || !departments.length}
             >
-              <option value="">Select</option>
+              <option value="">
+                {loadingLookups
+                  ? "Loading departments..."
+                  : departments.length
+                    ? "Select"
+                    : "No departments available"}
+              </option>
               {departments.map((dept) => (
                 <option key={dept._id} value={dept._id}>
                   {dept.name}
@@ -119,13 +136,27 @@ const RegisterPage = () => {
             </select>
           </div>
 
-          <div className="md:col-span-2">
+          <div>
             <label className="mb-1 block text-sm font-medium">Designation</label>
-            <input
+            <select
               className="w-full rounded-lg border px-3 py-2"
               value={form.designation}
               onChange={(e) => setForm((prev) => ({ ...prev, designation: e.target.value }))}
-            />
+              disabled={loadingLookups || !designations.length}
+            >
+              <option value="">
+                {loadingLookups
+                  ? "Loading designations..."
+                  : designations.length
+                    ? "Select"
+                    : "No designations available"}
+              </option>
+              {designations.map((designation) => (
+                <option key={designation} value={designation}>
+                  {designation}
+                </option>
+              ))}
+            </select>
           </div>
 
           <div className="md:col-span-2">
