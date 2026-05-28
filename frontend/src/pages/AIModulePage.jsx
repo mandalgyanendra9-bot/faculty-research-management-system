@@ -13,6 +13,7 @@ import {
   YAxis,
 } from "recharts";
 import api from "../api/client";
+import { toBackendFileUrl } from "../config/api";
 import { useAuth } from "../context/AuthContext";
 
 const AIModulePage = () => {
@@ -391,7 +392,7 @@ const AIModulePage = () => {
         <button className="rounded bg-brand-600 px-3 py-2 text-sm text-white" onClick={generateCv}>Generate CV PDF</button>
         {cvFilePath ? (
           <p className="mt-2 text-sm">
-            CV ready: <a className="text-brand-700 underline" href={`${import.meta.env.VITE_API_ROOT || "http://localhost:5000"}${cvFilePath}`} target="_blank" rel="noreferrer">Open PDF</a>
+            CV ready: <a className="text-brand-700 underline" href={toBackendFileUrl(cvFilePath)} target="_blank" rel="noreferrer">Open PDF</a>
           </p>
         ) : null}
       </section>

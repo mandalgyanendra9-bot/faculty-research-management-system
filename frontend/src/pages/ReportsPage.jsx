@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
 import api from "../api/client";
+import { toBackendFileUrl } from "../config/api";
 import { useAuth } from "../context/AuthContext";
 
 const reportTypes = [
@@ -106,7 +107,7 @@ const ReportsPage = () => {
                 <td>
                   <a
                     className="text-brand-700 underline"
-                    href={`${import.meta.env.VITE_API_ROOT || "http://localhost:5000"}${report.filePath}`}
+                    href={toBackendFileUrl(report.filePath)}
                     target="_blank"
                     rel="noreferrer"
                   >
