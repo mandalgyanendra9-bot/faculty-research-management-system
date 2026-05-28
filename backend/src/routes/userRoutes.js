@@ -2,6 +2,9 @@ const express = require("express");
 const {
   listUsers,
   updateUser,
+  listPendingUsers,
+  approvePendingFaculty,
+  assignUserRole,
   toggleUserStatus,
   createDepartment,
   listDepartments,
@@ -23,6 +26,9 @@ router.use(protect);
 
 router.get("/", authorize("super_admin", "admin", "hod_dean"), listUsers);
 router.put("/:id", authorize("super_admin", "admin"), updateUser);
+router.get("/pending-approvals", authorize("super_admin", "admin"), listPendingUsers);
+router.patch("/:id/approve-faculty", authorize("super_admin", "admin"), approvePendingFaculty);
+router.patch("/:id/assign-role", authorize("super_admin", "admin"), assignUserRole);
 router.patch("/:id/toggle-status", authorize("super_admin", "admin"), toggleUserStatus);
 
 router.post("/departments", authorize("super_admin", "admin"), createDepartment);

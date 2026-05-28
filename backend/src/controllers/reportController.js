@@ -1,9 +1,8 @@
-const path = require("path");
-
 const Publication = require("../models/Publication");
 const Patent = require("../models/Patent");
 const ResearchProject = require("../models/ResearchProject");
 const Grant = require("../models/Grant");
+const Event = require("../models/Event");
 const Report = require("../models/Report");
 const { generatePdfReport, generateExcelReport } = require("../services/reportService");
 const { calculateResearchScore } = require("../utils/score");
@@ -54,7 +53,7 @@ const getReportRows = async (type, filters) => {
     }));
   }
 
-  if (["naac", "nba_nirf"].includes(type)) {
+  if (["naac", "nba", "nirf"].includes(type)) {
     const [publications, patents, projects, grants] = await Promise.all([
       Publication.find({ approvalStatus: "approved" }).populate("submittedBy", "name"),
       Patent.find({ approvalStatus: "approved" }).populate("submittedBy", "name"),
@@ -68,6 +67,37 @@ const getReportRows = async (type, filters) => {
       ...projects.map((x) => ({ module: "Project", title: x.projectTitle, faculty: x.submittedBy?.name || "-", year: x.startDate ? new Date(x.startDate).getFullYear() : "-" })),
       ...grants.map((x) => ({ module: "Grant", title: x.grantProposal, faculty: x.submittedBy?.name || "-", year: x.createdAt ? new Date(x.createdAt).getFullYear() : "-" })),
     ];
+  }
+
+  if (type === "faculty_api_score") {
+    const userQuery = { role: "faculty" };
+    if (filters.facultyId) userQuery._id = filters.facultyId;
+    const faculties = await User.find(userQuery).populate("department", "name");
+
+    const rows = await Promise.all(
+      faculties.map(async (faculty) => {
+        const [publications, patents, projects, grants, events] = await Promise.all([
+          Publication.find({ submittedBy: faculty._id, approvalStatus: "approved" }),
+          Patent.find({ submittedBy: faculty._id, approvalStatus: "approved" }),
+          ResearchProject.find({ submittedBy: faculty._id, approvalStatus: "approved" }),
+          Grant.find({ submittedBy: faculty._id, approvalStatus: "approved" }),
+          Event.find({ submittedBy: faculty._id, approvalStatus: "approved" }),
+        ]);
+
+        return {
+          faculty: faculty.name,
+          department: faculty.department?.name || "-",
+          publications: publications.length,
+          patents: patents.length,
+          projects: projects.length,
+          grants: grants.length,
+          events: events.length,
+          apiScore: calculateResearchScore({ publications, patents, projects, grants, events }),
+        };
+      })
+    );
+
+    return rows;
   }
 
   if (type === "api_score") {
@@ -112,10 +142,10 @@ const generateReport = async (req, res) => {
   const sanitizedFilters = { ...filters };
 
   if (req.user.role === "faculty") {
-    if (!["faculty_wise", "year_wise", "api_score"].includes(type)) {
+    if (!["faculty_wise", "year_wise", "api_score", "faculty_api_score"].includes(type)) {
       return res.status(403).json({
         success: false,
-        message: "Faculty can generate only faculty-wise, year-wise, or API score reports",
+        message: "Faculty can generate only faculty-wise, year-wise, and API score reports",
       });
     }
     sanitizedFilters.facultyId = req.user._id;
@@ -129,20 +159,20 @@ const generateReport = async (req, res) => {
       ? await generatePdfReport({ title: `FRMS ${type} Report`, rows, columns })
       : await generateExcelReport({ sheetName: `${type}_report`, rows, columns });
 
-  const relativePath = `/uploads/reports/${path.basename(meta.fullPath)}`;
+  const reportPath = meta.fileUrl || `/uploads/reports/${meta.fileName}`;
 
   const report = await Report.create({
     generatedBy: req.user._id,
     type,
     format,
     filters: sanitizedFilters,
-    filePath: relativePath,
+    filePath: reportPath,
   });
 
   return res.status(201).json({
     success: true,
     message: "Report generated",
-    data: { reportId: report._id, filePath: relativePath },
+    data: { reportId: report._id, filePath: reportPath },
   });
 };
 

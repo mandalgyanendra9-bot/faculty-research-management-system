@@ -7,7 +7,7 @@ A production-ready MERN stack application for colleges and universities to manag
 - Backend: Node.js + Express.js
 - Database: MongoDB + Mongoose
 - Auth: JWT + bcrypt
-- File Upload: Multer (local storage)
+- File Upload: Multer + Cloudinary (production) with local fallback
 - Reports: PDFKit + ExcelJS
 - Role Control: Super Admin, Admin, HOD/Dean, Faculty, Research Coordinator
 
@@ -48,8 +48,10 @@ faculty-research-management-system/
   - Department-wise
   - Year-wise
   - NAAC Criterion III
-  - NBA/NIRF
+  - NBA
+  - NIRF
   - API score
+  - Faculty API score
 - Notification center
   - Pending approvals for reviewers
   - Approval/rejection updates for submitters
@@ -216,8 +218,12 @@ Frontend runs on `http://localhost:5173`
 - `PLAGIARISM_THRESHOLD`
 
 ### Frontend
-- `VITE_API_BASE_URL`
-- `VITE_API_ROOT`
+- `VITE_API_URL`
+
+### Optional Cloudinary (Backend)
+- `CLOUDINARY_CLOUD_NAME`
+- `CLOUDINARY_API_KEY`
+- `CLOUDINARY_API_SECRET`
 
 ## Screenshots
 - Add final UI captures to `docs/screenshots/` and update image links below.
@@ -229,6 +235,7 @@ Frontend runs on `http://localhost:5173`
 
 ## Notes
 - Local upload files are served from `/uploads/*`.
+- If Cloudinary env vars are set, uploaded/generated files use Cloudinary URLs.
 - Report files are generated at `/uploads/reports/*`.
 - Rejection reason is mandatory when rejecting approvals.
 - Faculty can edit/delete only their own pending entries.

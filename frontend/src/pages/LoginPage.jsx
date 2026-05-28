@@ -15,9 +15,13 @@ const LoginPage = () => {
     setSubmitting(true);
     try {
       await login(form);
-      navigate(location.state?.from || "/dashboard", { replace: true });
+      navigate(location.state?.from || "/app/dashboard", { replace: true });
     } catch (error) {
-      toast.error(error.response?.data?.message || "Login failed");
+          if (error.response?.status === 403) {
+            toast.error("Account pending approval. Please wait for admin activation.");
+          } else {
+            toast.error(error.response?.data?.message || "Login failed");
+          }
     } finally {
       setSubmitting(false);
     }
@@ -68,7 +72,7 @@ const LoginPage = () => {
           Forgot password? <Link to="/forgot-password" className="text-brand-600">Reset here</Link>
         </p>
         <p className="mt-2 rounded bg-brand-50 p-2 text-xs text-brand-700">
-          Demo Admin: admin@frms.com / Admin@123
+          Demo Admin: mandalgyanendra9@gmail.com / Admin@123
         </p>
       </div>
     </div>

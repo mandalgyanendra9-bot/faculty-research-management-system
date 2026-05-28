@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   Bar,
   BarChart,
@@ -19,6 +20,7 @@ import { useTheme } from "../context/ThemeContext";
 
 const DashboardPage = () => {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const { isDark } = useTheme();
   const [overview, setOverview] = useState(null);
   const [ranking, setRanking] = useState([]);
@@ -68,8 +70,57 @@ const DashboardPage = () => {
     color: isDark ? "#e2e8f0" : "#1f2937",
   };
 
+  const roleQuickActions = {
+    faculty: [
+      { label: "Add Publication", to: "/app/publications" },
+      { label: "Generate API Report", to: "/app/reports" },
+      { label: "Open AI Assistant", to: "/app/ai" },
+    ],
+    hod_dean: [
+      { label: "Review Approvals", to: "/app/approvals" },
+      { label: "Department Reports", to: "/app/reports" },
+      { label: "Faculty Profiles", to: "/app/profile" },
+    ],
+    research_coordinator: [
+      { label: "Pending Approvals", to: "/app/approvals" },
+      { label: "AI Analytics", to: "/app/ai" },
+      { label: "Research Reports", to: "/app/reports" },
+    ],
+    admin: [
+      { label: "User Management", to: "/app/users" },
+      { label: "Approval Queue", to: "/app/approvals" },
+      { label: "Audit Logs", to: "/app/audit-logs" },
+    ],
+    super_admin: [
+      { label: "User Management", to: "/app/users" },
+      { label: "Approval Queue", to: "/app/approvals" },
+      { label: "System Settings", to: "/app/settings" },
+    ],
+  };
+
+  const quickActions = roleQuickActions[user?.role] || [
+    { label: "Open Dashboard", to: "/app/dashboard" },
+    { label: "Open Reports", to: "/app/reports" },
+  ];
+
   return (
     <div className="space-y-6">
+      <section className="rounded-xl border border-slate-200 p-4 dark:border-slate-700">
+        <h3 className="mb-3 font-semibold text-slate-700 dark:text-slate-100">Quick Actions</h3>
+        <div className="flex flex-wrap gap-2">
+          {quickActions.map((action) => (
+            <button
+              key={action.label}
+              type="button"
+              onClick={() => navigate(action.to)}
+              className="rounded-lg bg-brand-600 px-3 py-2 text-sm font-medium text-white hover:bg-brand-700"
+            >
+              {action.label}
+            </button>
+          ))}
+        </div>
+      </section>
+
       <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
         <StatCard label="Total Faculty" value={overview.totalFaculty} accent="blue" />
         <StatCard label="Publications" value={overview.totalPublications} accent="emerald" />

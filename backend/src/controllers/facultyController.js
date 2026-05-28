@@ -1,6 +1,7 @@
 const FacultyProfile = require("../models/FacultyProfile");
 const User = require("../models/User");
 const catchAsync = require("../utils/catchAsync");
+const { resolveUploadUrl } = require("../services/fileStorageService");
 
 const upsertMyProfile = async (req, res) => {
   const payload = { ...req.body };
@@ -16,7 +17,13 @@ const upsertMyProfile = async (req, res) => {
       .map((x) => x.trim())
       .filter(Boolean);
   }
-  if (req.file) payload.profilePhotoUrl = `/uploads/${req.file.filename}`;
+  if (req.file) {
+    const uploaded = await resolveUploadUrl(req.file, {
+      folder: "frms/faculty-profile",
+      resourceType: "image",
+    });
+    payload.profilePhotoUrl = uploaded?.url;
+  }
 
   const profile = await FacultyProfile.findOneAndUpdate(
     { user: req.user._id },

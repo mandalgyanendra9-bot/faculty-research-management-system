@@ -9,17 +9,20 @@ const reportTypes = [
   { value: "department_wise", label: "Department-wise Report" },
   { value: "year_wise", label: "Year-wise Report" },
   { value: "naac", label: "NAAC Criterion III" },
-  { value: "nba_nirf", label: "NBA/NIRF Research Report" },
+  { value: "nba", label: "NBA Research Report" },
+  { value: "nirf", label: "NIRF Research Output Report" },
   { value: "api_score", label: "API Score Report" },
+  { value: "faculty_api_score", label: "Faculty API Score Report" },
 ];
 
 const ReportsPage = () => {
   const { user } = useAuth();
   const [form, setForm] = useState({ type: "faculty_wise", format: "pdf", year: "" });
   const [reports, setReports] = useState([]);
+  const [generating, setGenerating] = useState(false);
   const isFaculty = user?.role === "faculty";
   const availableTypes = isFaculty
-    ? reportTypes.filter((type) => ["faculty_wise", "year_wise", "api_score"].includes(type.value))
+    ? reportTypes.filter((type) => ["faculty_wise", "year_wise", "api_score", "faculty_api_score"].includes(type.value))
     : reportTypes;
 
   const loadReports = async () => {
@@ -37,6 +40,7 @@ const ReportsPage = () => {
 
   const generateReport = async (e) => {
     e.preventDefault();
+    setGenerating(true);
     try {
       await api.post("/reports/generate", {
         type: form.type,
@@ -47,6 +51,8 @@ const ReportsPage = () => {
       loadReports();
     } catch (error) {
       toast.error(error.response?.data?.message || "Generation failed");
+    } finally {
+      setGenerating(false);
     }
   };
 
@@ -79,7 +85,9 @@ const ReportsPage = () => {
           onChange={(e) => setForm((p) => ({ ...p, year: e.target.value }))}
         />
 
-        <button className="rounded-lg bg-brand-600 px-4 py-2 text-white">Generate</button>
+        <button className="rounded-lg bg-brand-600 px-4 py-2 text-white disabled:opacity-70" disabled={generating}>
+          {generating ? "Generating..." : "Generate"}
+        </button>
       </form>
 
       {isFaculty ? (

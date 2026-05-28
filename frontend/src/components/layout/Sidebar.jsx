@@ -19,20 +19,20 @@ import {
 import { useAuth } from "../../context/AuthContext";
 
 const navItems = [
-  { to: "/dashboard", label: "Dashboard", icon: Home },
-  { to: "/profile", label: "Profile", icon: UserCircle },
-  { to: "/publications", label: "Publications", icon: BookOpen },
-  { to: "/projects", label: "Projects", icon: BriefcaseBusiness },
-  { to: "/patents", label: "Patents", icon: FlaskConical },
-  { to: "/grants", label: "Grants", icon: Landmark },
-  { to: "/events", label: "Events", icon: ChartBarBig },
-  { to: "/approvals", label: "Approvals", icon: ClipboardCheck, roles: ["super_admin", "admin", "hod_dean", "research_coordinator"] },
-  { to: "/reports", label: "Reports", icon: FileText, roles: ["super_admin", "admin", "hod_dean", "research_coordinator", "faculty"] },
-  { to: "/ai", label: "AI Suite", icon: BrainCircuit, roles: ["super_admin", "admin", "hod_dean", "research_coordinator", "faculty"] },
-  { to: "/settings", label: "Settings", icon: Settings, roles: ["super_admin", "admin", "research_coordinator"] },
-  { to: "/audit-logs", label: "Audit Logs", icon: ShieldCheck, roles: ["super_admin", "admin"] },
-  { to: "/users", label: "Users", icon: Users, roles: ["super_admin", "admin"] },
-  { to: "/notifications", label: "Notifications", icon: Bell },
+  { to: "/app/dashboard", label: "Dashboard", icon: Home },
+  { to: "/app/profile", label: "Profile", icon: UserCircle },
+  { to: "/app/publications", label: "Publications", icon: BookOpen },
+  { to: "/app/projects", label: "Projects", icon: BriefcaseBusiness },
+  { to: "/app/patents", label: "Patents", icon: FlaskConical },
+  { to: "/app/grants", label: "Grants", icon: Landmark },
+  { to: "/app/events", label: "Events", icon: ChartBarBig },
+  { to: "/app/approvals", label: "Approvals", icon: ClipboardCheck, roles: ["super_admin", "admin", "hod_dean", "research_coordinator"] },
+  { to: "/app/reports", label: "Reports", icon: FileText, roles: ["super_admin", "admin", "hod_dean", "research_coordinator", "faculty"] },
+  { to: "/app/ai", label: "AI Suite", icon: BrainCircuit, roles: ["super_admin", "admin", "hod_dean", "research_coordinator", "faculty"] },
+  { to: "/app/settings", label: "Settings", icon: Settings, roles: ["super_admin", "admin", "research_coordinator"] },
+  { to: "/app/audit-logs", label: "Audit Logs", icon: ShieldCheck, roles: ["super_admin", "admin"] },
+  { to: "/app/users", label: "Users", icon: Users, roles: ["super_admin", "admin"] },
+  { to: "/app/notifications", label: "Notifications", icon: Bell },
 ];
 
 const Sidebar = ({ mobile = false, onNavigate }) => {

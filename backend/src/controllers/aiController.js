@@ -29,6 +29,7 @@ const {
   extractTextWithOcr,
   frequencyKeywords,
 } = require("../services/aiService");
+const { resolveUploadUrl, uploadGeneratedFile, safeRemoveLocalFile } = require("../services/fileStorageService");
 
 const ensureReportsDir = () => {
   const reportDir = path.join(__dirname, "..", "uploads", "reports");
@@ -47,11 +48,15 @@ const generatePaperSummary = catchAsync(async (req, res) => {
   const fullPath = req.file.path;
   const extractedText = await extractTextFromPdf(fullPath);
   const summary = await generateResearchSummary(extractedText);
+  const uploaded = await resolveUploadUrl(req.file, {
+    folder: "frms/ai/papers",
+    resourceType: "raw",
+  });
 
   const paper = await AIResearchPaper.create({
     uploadedBy: req.user._id,
     title: req.body.title || req.file.originalname,
-    fileUrl: `/uploads/${req.file.filename}`,
+    fileUrl: uploaded?.url,
     extractedText,
     abstractSummary: summary.abstractSummary,
     keyFindings: summary.keyFindings,
@@ -300,7 +305,14 @@ const uploadPlagiarism = catchAsync(async (req, res) => {
     similarityPercentage: similarity,
     flagged,
     notes,
-    reportUrl: req.file ? `/uploads/${req.file.filename}` : undefined,
+    reportUrl: req.file
+      ? (
+        await resolveUploadUrl(req.file, {
+          folder: "frms/ai/plagiarism",
+          resourceType: "raw",
+        })
+      )?.url
+      : undefined,
   });
 
   publication.plagiarismSimilarity = similarity;
@@ -397,9 +409,16 @@ const generateFacultyCv = catchAsync(async (req, res) => {
   );
 
   doc.end();
+  await new Promise((resolve) => doc.on("end", resolve));
+  const uploadedCv = await uploadGeneratedFile(fullPath, {
+    folder: "frms/reports/cv",
+    resourceType: "raw",
+  });
+  if (uploadedCv.provider === "cloudinary") {
+    await safeRemoveLocalFile(fullPath);
+  }
 
-  const filePath = `/uploads/reports/${fileName}`;
-  res.json({ success: true, data: { filePath } });
+  res.json({ success: true, data: { filePath: uploadedCv.url } });
 });
 
 const chatAssistant = catchAsync(async (req, res) => {
@@ -479,7 +498,12 @@ const ocrExtract = catchAsync(async (req, res) => {
   res.json({
     success: true,
     data: {
-      fileUrl: `/uploads/${req.file.filename}`,
+      fileUrl: (
+        await resolveUploadUrl(req.file, {
+          folder: "frms/ai/ocr",
+          resourceType: "raw",
+        })
+      )?.url,
       extractedText: text.slice(0, 15000),
       keywords,
       autoFill: {

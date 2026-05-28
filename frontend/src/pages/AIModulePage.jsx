@@ -16,12 +16,27 @@ import api from "../api/client";
 import { toBackendFileUrl } from "../config/api";
 import { useAuth } from "../context/AuthContext";
 
+const tabs = [
+  { key: "summary", label: "Summary" },
+  { key: "recommendations", label: "Recommendations" },
+  { key: "analytics", label: "Analytics" },
+  { key: "search", label: "Smart Search" },
+  { key: "plagiarism", label: "Plagiarism" },
+  { key: "proposal", label: "Proposal" },
+  { key: "cv", label: "CV" },
+  { key: "chat", label: "Chat" },
+  { key: "ocr", label: "OCR" },
+];
+
 const AIModulePage = () => {
   const { user } = useAuth();
   const isReviewer = useMemo(
     () => ["super_admin", "admin", "hod_dean", "research_coordinator"].includes(user?.role),
     [user?.role]
   );
+
+  const [activeTab, setActiveTab] = useState("summary");
+  const [busyKey, setBusyKey] = useState("");
 
   const [summaryFile, setSummaryFile] = useState(null);
   const [summaryTitle, setSummaryTitle] = useState("");
@@ -60,63 +75,61 @@ const AIModulePage = () => {
       .catch(() => setPublications([]));
   }, [user?.role]);
 
+  const runTask = async (key, fn) => {
+    setBusyKey(key);
+    try {
+      await fn();
+    } finally {
+      setBusyKey("");
+    }
+  };
+
   const submitSummary = async (e) => {
     e.preventDefault();
     if (!summaryFile) return toast.error("Please upload a PDF paper");
-
-    try {
+    await runTask("summary", async () => {
       const fd = new FormData();
       fd.append("paper", summaryFile);
       if (summaryTitle) fd.append("title", summaryTitle);
       const { data } = await api.post("/ai/research-summary", fd);
       setSummaryResult(data.data);
       toast.success("AI summary generated");
-    } catch (error) {
-      toast.error(error.response?.data?.message || "Summary generation failed");
-    }
+    }).catch((error) => toast.error(error.response?.data?.message || "Summary generation failed"));
   };
 
   const fetchRecommendations = async () => {
-    try {
+    await runTask("recommendations", async () => {
       const { data } = await api.post("/ai/publication-recommendation", { researchArea });
       setRecommendation(data.data);
       toast.success("Recommendations ready");
-    } catch (error) {
-      toast.error(error.response?.data?.message || "Recommendation failed");
-    }
+    }).catch((error) => toast.error(error.response?.data?.message || "Recommendation failed"));
   };
 
   const fetchTrends = async () => {
-    try {
+    await runTask("analytics", async () => {
       const { data } = await api.get("/ai/trend-analysis");
       setTrendData(data.data);
-    } catch (error) {
-      toast.error(error.response?.data?.message || "Trend fetch failed");
-    }
+    }).catch((error) => toast.error(error.response?.data?.message || "Trend fetch failed"));
   };
 
   const fetchCitations = async () => {
-    try {
+    await runTask("analytics", async () => {
       const { data } = await api.get("/ai/citation-insights");
       setCitationData(data.data);
-    } catch (error) {
-      toast.error(error.response?.data?.message || "Citation insights failed");
-    }
+    }).catch((error) => toast.error(error.response?.data?.message || "Citation insights failed"));
   };
 
   const runSmartSearch = async () => {
     if (!searchQuery.trim()) return;
-    try {
+    await runTask("search", async () => {
       const { data } = await api.post("/ai/smart-search", { query: searchQuery });
       setSearchResults(data.data || []);
-    } catch (error) {
-      toast.error(error.response?.data?.message || "Smart search failed");
-    }
+    }).catch((error) => toast.error(error.response?.data?.message || "Smart search failed"));
   };
 
   const submitPlagiarism = async (e) => {
     e.preventDefault();
-    try {
+    await runTask("plagiarism", async () => {
       const fd = new FormData();
       fd.append("publicationId", plagForm.publicationId);
       fd.append("similarityPercentage", plagForm.similarityPercentage);
@@ -126,327 +139,310 @@ const AIModulePage = () => {
       toast.success(data.message || "Plagiarism report uploaded");
       setPlagForm({ publicationId: "", similarityPercentage: "", notes: "" });
       setPlagFile(null);
-    } catch (error) {
-      toast.error(error.response?.data?.message || "Plagiarism upload failed");
-    }
+    }).catch((error) => toast.error(error.response?.data?.message || "Plagiarism upload failed"));
   };
 
   const generateProposal = async (e) => {
     e.preventDefault();
-    try {
+    await runTask("proposal", async () => {
       const { data } = await api.post("/ai/proposal-assistant", proposalForm);
       setProposal(data.data);
       toast.success("Proposal draft generated");
-    } catch (error) {
-      toast.error(error.response?.data?.message || "Proposal generation failed");
-    }
+    }).catch((error) => toast.error(error.response?.data?.message || "Proposal generation failed"));
   };
 
   const generateCv = async () => {
-    try {
+    await runTask("cv", async () => {
       const { data } = await api.get("/ai/faculty-cv");
       setCvFilePath(data.data.filePath);
       toast.success("Faculty CV generated");
-    } catch (error) {
-      toast.error(error.response?.data?.message || "CV generation failed");
-    }
+    }).catch((error) => toast.error(error.response?.data?.message || "CV generation failed"));
   };
 
   const askChat = async (e) => {
     e.preventDefault();
     if (!chatQuestion.trim()) return;
-    try {
+    await runTask("chat", async () => {
       const { data } = await api.post("/ai/chat", { question: chatQuestion });
       setChatAnswer(data.data.answer || "");
-    } catch (error) {
-      toast.error(error.response?.data?.message || "Chat request failed");
-    }
+    }).catch((error) => toast.error(error.response?.data?.message || "Chat request failed"));
   };
 
   const fetchScorePrediction = async () => {
-    try {
+    await runTask("analytics", async () => {
       const { data } = await api.post("/ai/score-prediction", {});
       setScorePrediction(data.data);
-    } catch (error) {
-      toast.error(error.response?.data?.message || "Score prediction failed");
-    }
+    }).catch((error) => toast.error(error.response?.data?.message || "Score prediction failed"));
   };
 
   const submitOcr = async (e) => {
     e.preventDefault();
     if (!ocrFile) return toast.error("Please upload a document/image");
-    try {
+    await runTask("ocr", async () => {
       const fd = new FormData();
       fd.append("document", ocrFile);
       const { data } = await api.post("/ai/ocr", fd);
       setOcrData(data.data);
       toast.success("OCR processed");
-    } catch (error) {
-      toast.error(error.response?.data?.message || "OCR failed");
-    }
+    }).catch((error) => toast.error(error.response?.data?.message || "OCR failed"));
   };
 
   const syncSemantic = async () => {
-    try {
+    await runTask("analytics", async () => {
       await api.post("/ai/semantic-index/sync");
       toast.success("Semantic index synchronized");
-    } catch (error) {
-      toast.error(error.response?.data?.message || "Semantic sync failed");
-    }
+    }).catch((error) => toast.error(error.response?.data?.message || "Semantic sync failed"));
   };
 
+  const isBusy = (key) => busyKey === key;
+
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       <div>
-        <h2 className="text-2xl font-semibold text-slate-800">AI Research Intelligence Suite</h2>
-        <p className="text-sm text-slate-500">Advanced AI support for summary, recommendations, trends, citations, search, plagiarism, CV, OCR, and forecasting.</p>
+        <h2 className="text-2xl font-semibold text-slate-800 dark:text-slate-100">AI Research Intelligence Suite</h2>
+        <p className="text-sm text-slate-500 dark:text-slate-400">
+          Organized into focused AI workspaces for faster institutional usage. First request may take time if Render is waking up.
+        </p>
       </div>
 
-      <section className="rounded-xl border p-4">
-        <h3 className="mb-3 font-semibold">1. AI Research Summary (PDF)</h3>
-        <form className="grid gap-3 md:grid-cols-3" onSubmit={submitSummary}>
-          <input
-            className="rounded-lg border px-3 py-2"
-            placeholder="Paper Title (optional)"
-            value={summaryTitle}
-            onChange={(e) => setSummaryTitle(e.target.value)}
-          />
-          <input type="file" accept=".pdf" className="rounded-lg border px-3 py-2" onChange={(e) => setSummaryFile(e.target.files?.[0] || null)} />
-          <button className="rounded-lg bg-brand-600 px-3 py-2 text-white">Generate Summary</button>
-        </form>
-        {summaryResult ? (
-          <div className="mt-3 space-y-2 rounded-lg bg-slate-50 p-3 text-sm">
-            <p><span className="font-semibold">Abstract:</span> {summaryResult.abstractSummary}</p>
-            <p><span className="font-semibold">Key Findings:</span> {summaryResult.keyFindings}</p>
-            <p><span className="font-semibold">Keywords:</span> {(summaryResult.keywords || []).join(", ")}</p>
-            <p><span className="font-semibold">Contribution:</span> {summaryResult.contributionSummary}</p>
-          </div>
-        ) : null}
-      </section>
-
-      <section className="rounded-xl border p-4">
-        <h3 className="mb-3 font-semibold">2. AI Publication Recommendation</h3>
-        <div className="grid gap-3 md:grid-cols-3">
-          <input
-            className="rounded-lg border px-3 py-2 md:col-span-2"
-            placeholder="Research area (e.g., AI in healthcare)"
-            value={researchArea}
-            onChange={(e) => setResearchArea(e.target.value)}
-          />
-          <button className="rounded-lg bg-brand-600 px-3 py-2 text-white" onClick={fetchRecommendations}>Get Suggestions</button>
+      {busyKey ? (
+        <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800 dark:border-amber-900/60 dark:bg-amber-950/20 dark:text-amber-200">
+          AI action in progress. This can take 20-60 seconds for large files or cold starts.
         </div>
-        {recommendation ? (
-          <div className="mt-3 grid gap-3 md:grid-cols-3 text-sm">
-            <CardList title="Journals" items={recommendation.journals || []} />
-            <CardList title="Conferences" items={recommendation.conferences || []} />
-            <CardList title="Domains" items={recommendation.researchDomains || []} />
-          </div>
-        ) : null}
-      </section>
+      ) : null}
 
-      <section className="rounded-xl border p-4">
-        <h3 className="mb-3 font-semibold">3. AI Research Trend Analysis</h3>
-        <div className="mb-3 flex gap-2">
-          <button className="rounded bg-brand-600 px-3 py-2 text-sm text-white" onClick={fetchTrends}>Analyze Trends</button>
-          {isReviewer ? <button className="rounded bg-slate-100 px-3 py-2 text-sm" onClick={syncSemantic}>Sync Semantic Index</button> : null}
-        </div>
-        {trendData ? (
-          <div className="grid gap-4 md:grid-cols-2">
-            <div className="h-64 rounded-lg bg-slate-50 p-2">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={trendData.trendingTopics || []}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="topic" hide />
-                  <YAxis />
-                  <Tooltip />
-                  <Bar dataKey="count" fill="#0f766e" />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-            <div className="h-64 rounded-lg bg-slate-50 p-2">
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={trendData.topicGrowth || []}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="year" />
-                  <YAxis />
-                  <Tooltip />
-                  <Line type="monotone" dataKey="totalTopics" stroke="#1d4ed8" strokeWidth={2} />
-                </LineChart>
-              </ResponsiveContainer>
-            </div>
-          </div>
-        ) : null}
-      </section>
-
-      <section className="rounded-xl border p-4">
-        <h3 className="mb-3 font-semibold">4. AI Citation Insights</h3>
-        <button className="rounded bg-brand-600 px-3 py-2 text-sm text-white" onClick={fetchCitations}>Run Citation Analytics</button>
-        {citationData ? (
-          <div className="mt-3 space-y-3">
-            <p className="text-sm">Average Citation: <span className="font-semibold">{citationData.averageCitation}</span></p>
-            <div className="h-64 rounded-lg bg-slate-50 p-2">
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={citationData.citationGrowthForecast || []}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="title" hide />
-                  <YAxis />
-                  <Tooltip />
-                  <Legend />
-                  <Line type="monotone" dataKey="current" stroke="#0f766e" />
-                  <Line type="monotone" dataKey="predictedNextYear" stroke="#b91c1c" />
-                </LineChart>
-              </ResponsiveContainer>
-            </div>
-          </div>
-        ) : null}
-      </section>
-
-      <section className="rounded-xl border p-4">
-        <h3 className="mb-3 font-semibold">5. AI Smart Search (Semantic)</h3>
-        <div className="grid gap-2 md:grid-cols-4">
-          <input
-            className="rounded-lg border px-3 py-2 md:col-span-3"
-            placeholder='Try: "AI papers on healthcare"'
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-          />
-          <button className="rounded-lg bg-brand-600 px-3 py-2 text-white" onClick={runSmartSearch}>Search</button>
-        </div>
-        <div className="mt-3 space-y-2 text-sm">
-          {searchResults.map((item, idx) => (
-            <div key={`${item.sourceType}-${item.sourceId}-${idx}`} className="rounded border p-2">
-              <p className="font-medium">{item.title}</p>
-              <p className="text-xs text-slate-500">{item.sourceType} | score: {item.score}</p>
-              <p className="text-xs text-slate-600">{(item.keywords || []).join(", ")}</p>
-            </div>
-          ))}
-          {!searchResults.length ? <p className="text-slate-500">No semantic results yet.</p> : null}
-        </div>
-      </section>
-
-      <section className="rounded-xl border p-4">
-        <h3 className="mb-3 font-semibold">6. AI Plagiarism Support</h3>
-        <form className="grid gap-2 md:grid-cols-4" onSubmit={submitPlagiarism}>
-          <select
-            className="rounded-lg border px-3 py-2"
-            value={plagForm.publicationId}
-            onChange={(e) => setPlagForm((p) => ({ ...p, publicationId: e.target.value }))}
-            required
+      <div className="flex flex-wrap gap-2">
+        {tabs.map((tab) => (
+          <button
+            key={tab.key}
+            type="button"
+            onClick={() => setActiveTab(tab.key)}
+            className={`rounded-full px-3 py-1.5 text-sm ${
+              activeTab === tab.key
+                ? "bg-brand-600 text-white"
+                : "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-200"
+            }`}
           >
-            <option value="">Select publication</option>
-            {publications.map((pub) => (
-              <option key={pub._id} value={pub._id}>{pub.title}</option>
+            {tab.label}
+          </button>
+        ))}
+      </div>
+
+      {activeTab === "summary" ? (
+        <section className="rounded-xl border p-4 dark:border-slate-700">
+          <h3 className="mb-3 font-semibold">AI Research Summary (PDF)</h3>
+          <form className="grid gap-3 md:grid-cols-3" onSubmit={submitSummary}>
+            <input className="rounded-lg border px-3 py-2 dark:border-slate-700 dark:bg-slate-800" placeholder="Paper Title (optional)" value={summaryTitle} onChange={(e) => setSummaryTitle(e.target.value)} />
+            <input type="file" accept=".pdf" className="rounded-lg border px-3 py-2 dark:border-slate-700 dark:bg-slate-800" onChange={(e) => setSummaryFile(e.target.files?.[0] || null)} />
+            <button className="rounded-lg bg-brand-600 px-3 py-2 text-white" disabled={isBusy("summary")}>{isBusy("summary") ? "Generating..." : "Generate Summary"}</button>
+          </form>
+          {summaryResult ? (
+            <div className="mt-3 space-y-2 rounded-lg bg-slate-50 p-3 text-sm dark:bg-slate-800">
+              <p><span className="font-semibold">Abstract:</span> {summaryResult.abstractSummary}</p>
+              <p><span className="font-semibold">Key Findings:</span> {summaryResult.keyFindings}</p>
+              <p><span className="font-semibold">Keywords:</span> {(summaryResult.keywords || []).join(", ")}</p>
+              <p><span className="font-semibold">Contribution:</span> {summaryResult.contributionSummary}</p>
+            </div>
+          ) : null}
+        </section>
+      ) : null}
+
+      {activeTab === "recommendations" ? (
+        <section className="rounded-xl border p-4 dark:border-slate-700">
+          <h3 className="mb-3 font-semibold">Publication Recommendation</h3>
+          <div className="grid gap-3 md:grid-cols-3">
+            <input className="rounded-lg border px-3 py-2 md:col-span-2 dark:border-slate-700 dark:bg-slate-800" placeholder="Research area (e.g., AI in healthcare)" value={researchArea} onChange={(e) => setResearchArea(e.target.value)} />
+            <button className="rounded-lg bg-brand-600 px-3 py-2 text-white" onClick={fetchRecommendations} disabled={isBusy("recommendations")}>{isBusy("recommendations") ? "Fetching..." : "Get Suggestions"}</button>
+          </div>
+          {recommendation ? (
+            <div className="mt-3 grid gap-3 text-sm md:grid-cols-3">
+              <CardList title="Journals" items={recommendation.journals || []} />
+              <CardList title="Conferences" items={recommendation.conferences || []} />
+              <CardList title="Domains" items={recommendation.researchDomains || []} />
+            </div>
+          ) : null}
+        </section>
+      ) : null}
+
+      {activeTab === "analytics" ? (
+        <section className="rounded-xl border p-4 dark:border-slate-700">
+          <h3 className="mb-3 font-semibold">Research Analytics</h3>
+          <div className="mb-3 flex flex-wrap gap-2">
+            <button className="rounded bg-brand-600 px-3 py-2 text-sm text-white" onClick={fetchTrends} disabled={isBusy("analytics")}>
+              Analyze Trends
+            </button>
+            <button className="rounded bg-brand-600 px-3 py-2 text-sm text-white" onClick={fetchCitations} disabled={isBusy("analytics")}>
+              Citation Insights
+            </button>
+            <button className="rounded bg-brand-600 px-3 py-2 text-sm text-white" onClick={fetchScorePrediction} disabled={isBusy("analytics")}>
+              Predict Score
+            </button>
+            {isReviewer ? <button className="rounded bg-slate-100 px-3 py-2 text-sm dark:bg-slate-800" onClick={syncSemantic} disabled={isBusy("analytics")}>Sync Semantic Index</button> : null}
+          </div>
+
+          {trendData ? (
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="h-64 rounded-lg bg-slate-50 p-2 dark:bg-slate-800">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={trendData.trendingTopics || []}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="topic" hide />
+                    <YAxis />
+                    <Tooltip />
+                    <Bar dataKey="count" fill="#0f766e" />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+              <div className="h-64 rounded-lg bg-slate-50 p-2 dark:bg-slate-800">
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={trendData.topicGrowth || []}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="year" />
+                    <YAxis />
+                    <Tooltip />
+                    <Line type="monotone" dataKey="totalTopics" stroke="#1d4ed8" strokeWidth={2} />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+          ) : null}
+
+          {citationData ? (
+            <div className="mt-3 space-y-3">
+              <p className="text-sm">Average Citation: <span className="font-semibold">{citationData.averageCitation}</span></p>
+              <div className="h-64 rounded-lg bg-slate-50 p-2 dark:bg-slate-800">
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={citationData.citationGrowthForecast || []}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="title" hide />
+                    <YAxis />
+                    <Tooltip />
+                    <Legend />
+                    <Line type="monotone" dataKey="current" stroke="#0f766e" />
+                    <Line type="monotone" dataKey="predictedNextYear" stroke="#b91c1c" />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+          ) : null}
+
+          {scorePrediction?.facultyPrediction ? (
+            <div className="mt-3 grid gap-2 text-sm md:grid-cols-3">
+              <MiniStat label="Current" value={scorePrediction.facultyPrediction.currentScore} />
+              <MiniStat label="Next Year" value={scorePrediction.facultyPrediction.predictedNextYearScore} />
+              <MiniStat label="Two Years" value={scorePrediction.facultyPrediction.predictedTwoYearScore} />
+            </div>
+          ) : null}
+        </section>
+      ) : null}
+
+      {activeTab === "search" ? (
+        <section className="rounded-xl border p-4 dark:border-slate-700">
+          <h3 className="mb-3 font-semibold">Smart Search (Semantic)</h3>
+          <div className="grid gap-2 md:grid-cols-4">
+            <input className="rounded-lg border px-3 py-2 md:col-span-3 dark:border-slate-700 dark:bg-slate-800" placeholder='Try: "AI papers on healthcare"' value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
+            <button className="rounded-lg bg-brand-600 px-3 py-2 text-white" onClick={runSmartSearch} disabled={isBusy("search")}>{isBusy("search") ? "Searching..." : "Search"}</button>
+          </div>
+          <div className="mt-3 space-y-2 text-sm">
+            {searchResults.map((item, idx) => (
+              <div key={`${item.sourceType}-${item.sourceId}-${idx}`} className="rounded border p-2 dark:border-slate-700">
+                <p className="font-medium">{item.title}</p>
+                <p className="text-xs text-slate-500">{item.sourceType} | score: {item.score}</p>
+                <p className="text-xs text-slate-600 dark:text-slate-300">{(item.keywords || []).join(", ")}</p>
+              </div>
             ))}
-          </select>
-          <input
-            type="number"
-            min="0"
-            max="100"
-            className="rounded-lg border px-3 py-2"
-            placeholder="Similarity %"
-            value={plagForm.similarityPercentage}
-            onChange={(e) => setPlagForm((p) => ({ ...p, similarityPercentage: e.target.value }))}
-            required
-          />
-          <input
-            type="file"
-            className="rounded-lg border px-3 py-2"
-            onChange={(e) => setPlagFile(e.target.files?.[0] || null)}
-          />
-          <button className="rounded-lg bg-brand-600 px-3 py-2 text-white">Upload</button>
-          <input
-            className="rounded-lg border px-3 py-2 md:col-span-4"
-            placeholder="Notes (optional)"
-            value={plagForm.notes}
-            onChange={(e) => setPlagForm((p) => ({ ...p, notes: e.target.value }))}
-          />
-        </form>
-      </section>
-
-      <section className="rounded-xl border p-4">
-        <h3 className="mb-3 font-semibold">7. AI Proposal Assistant</h3>
-        <form className="grid gap-2 md:grid-cols-2" onSubmit={generateProposal}>
-          {Object.keys(proposalForm).map((key) => (
-            <input
-              key={key}
-              className="rounded-lg border px-3 py-2"
-              placeholder={key}
-              value={proposalForm[key]}
-              onChange={(e) => setProposalForm((p) => ({ ...p, [key]: e.target.value }))}
-            />
-          ))}
-          <button className="rounded-lg bg-brand-600 px-3 py-2 text-white md:col-span-2">Generate Proposal Draft</button>
-        </form>
-        {proposal ? (
-          <div className="mt-3 rounded-lg bg-slate-50 p-3 text-sm">
-            <p className="font-semibold">{proposal.proposalTitle}</p>
-            <p className="mt-2"><span className="font-semibold">Methodology:</span> {proposal.methodology}</p>
-            <p className="mt-2"><span className="font-semibold">Objectives:</span> {(proposal.objectives || []).join("; ")}</p>
-            <p className="mt-2"><span className="font-semibold">Literature Outline:</span> {(proposal.literatureReviewOutline || []).join("; ")}</p>
+            {!searchResults.length ? <p className="text-slate-500">No semantic results yet.</p> : null}
           </div>
-        ) : null}
-      </section>
+        </section>
+      ) : null}
 
-      <section className="rounded-xl border p-4">
-        <h3 className="mb-3 font-semibold">8. AI Auto-Generated Faculty CV</h3>
-        <button className="rounded bg-brand-600 px-3 py-2 text-sm text-white" onClick={generateCv}>Generate CV PDF</button>
-        {cvFilePath ? (
-          <p className="mt-2 text-sm">
-            CV ready: <a className="text-brand-700 underline" href={toBackendFileUrl(cvFilePath)} target="_blank" rel="noreferrer">Open PDF</a>
-          </p>
-        ) : null}
-      </section>
+      {activeTab === "plagiarism" ? (
+        <section className="rounded-xl border p-4 dark:border-slate-700">
+          <h3 className="mb-3 font-semibold">Plagiarism Support</h3>
+          <form className="grid gap-2 md:grid-cols-4" onSubmit={submitPlagiarism}>
+            <select className="rounded-lg border px-3 py-2 dark:border-slate-700 dark:bg-slate-800" value={plagForm.publicationId} onChange={(e) => setPlagForm((p) => ({ ...p, publicationId: e.target.value }))} required>
+              <option value="">Select publication</option>
+              {publications.map((pub) => <option key={pub._id} value={pub._id}>{pub.title}</option>)}
+            </select>
+            <input type="number" min="0" max="100" className="rounded-lg border px-3 py-2 dark:border-slate-700 dark:bg-slate-800" placeholder="Similarity %" value={plagForm.similarityPercentage} onChange={(e) => setPlagForm((p) => ({ ...p, similarityPercentage: e.target.value }))} required />
+            <input type="file" className="rounded-lg border px-3 py-2 dark:border-slate-700 dark:bg-slate-800" onChange={(e) => setPlagFile(e.target.files?.[0] || null)} />
+            <button className="rounded-lg bg-brand-600 px-3 py-2 text-white" disabled={isBusy("plagiarism")}>{isBusy("plagiarism") ? "Uploading..." : "Upload"}</button>
+            <input className="rounded-lg border px-3 py-2 md:col-span-4 dark:border-slate-700 dark:bg-slate-800" placeholder="Notes (optional)" value={plagForm.notes} onChange={(e) => setPlagForm((p) => ({ ...p, notes: e.target.value }))} />
+          </form>
+        </section>
+      ) : null}
 
-      <section className="rounded-xl border p-4">
-        <h3 className="mb-3 font-semibold">9. AI Chat Assistant</h3>
-        <form className="grid gap-2 md:grid-cols-4" onSubmit={askChat}>
-          <input
-            className="rounded-lg border px-3 py-2 md:col-span-3"
-            placeholder="Ask: How to submit publication?"
-            value={chatQuestion}
-            onChange={(e) => setChatQuestion(e.target.value)}
-          />
-          <button className="rounded-lg bg-brand-600 px-3 py-2 text-white">Ask</button>
-        </form>
-        {chatAnswer ? <p className="mt-2 rounded-lg bg-slate-50 p-3 text-sm">{chatAnswer}</p> : null}
-      </section>
+      {activeTab === "proposal" ? (
+        <section className="rounded-xl border p-4 dark:border-slate-700">
+          <h3 className="mb-3 font-semibold">Proposal Assistant</h3>
+          <form className="grid gap-2 md:grid-cols-2" onSubmit={generateProposal}>
+            {Object.keys(proposalForm).map((key) => (
+              <input key={key} className="rounded-lg border px-3 py-2 dark:border-slate-700 dark:bg-slate-800" placeholder={key} value={proposalForm[key]} onChange={(e) => setProposalForm((p) => ({ ...p, [key]: e.target.value }))} />
+            ))}
+            <button className="rounded-lg bg-brand-600 px-3 py-2 text-white md:col-span-2" disabled={isBusy("proposal")}>{isBusy("proposal") ? "Generating..." : "Generate Proposal Draft"}</button>
+          </form>
+          {proposal ? (
+            <div className="mt-3 rounded-lg bg-slate-50 p-3 text-sm dark:bg-slate-800">
+              <p className="font-semibold">{proposal.proposalTitle}</p>
+              <p className="mt-2"><span className="font-semibold">Methodology:</span> {proposal.methodology}</p>
+              <p className="mt-2"><span className="font-semibold">Objectives:</span> {(proposal.objectives || []).join("; ")}</p>
+              <p className="mt-2"><span className="font-semibold">Literature Outline:</span> {(proposal.literatureReviewOutline || []).join("; ")}</p>
+            </div>
+          ) : null}
+        </section>
+      ) : null}
 
-      <section className="rounded-xl border p-4">
-        <h3 className="mb-3 font-semibold">10. AI Research Score Prediction</h3>
-        <button className="rounded bg-brand-600 px-3 py-2 text-sm text-white" onClick={fetchScorePrediction}>Predict Score</button>
-        {scorePrediction?.facultyPrediction ? (
-          <div className="mt-3 grid gap-2 md:grid-cols-3 text-sm">
-            <MiniStat label="Current" value={scorePrediction.facultyPrediction.currentScore} />
-            <MiniStat label="Next Year" value={scorePrediction.facultyPrediction.predictedNextYearScore} />
-            <MiniStat label="Two Years" value={scorePrediction.facultyPrediction.predictedTwoYearScore} />
-          </div>
-        ) : null}
-      </section>
+      {activeTab === "cv" ? (
+        <section className="rounded-xl border p-4 dark:border-slate-700">
+          <h3 className="mb-3 font-semibold">Auto-Generated Faculty CV</h3>
+          <button className="rounded bg-brand-600 px-3 py-2 text-sm text-white" onClick={generateCv} disabled={isBusy("cv")}>
+            {isBusy("cv") ? "Generating..." : "Generate CV PDF"}
+          </button>
+          {cvFilePath ? (
+            <p className="mt-2 text-sm">
+              CV ready: <a className="text-brand-700 underline" href={toBackendFileUrl(cvFilePath)} target="_blank" rel="noreferrer">Open PDF</a>
+            </p>
+          ) : null}
+        </section>
+      ) : null}
 
-      <section className="rounded-xl border p-4">
-        <h3 className="mb-3 font-semibold">11. AI OCR Document Reading</h3>
-        <form className="grid gap-2 md:grid-cols-3" onSubmit={submitOcr}>
-          <input type="file" className="rounded-lg border px-3 py-2 md:col-span-2" onChange={(e) => setOcrFile(e.target.files?.[0] || null)} />
-          <button className="rounded-lg bg-brand-600 px-3 py-2 text-white">Extract Text</button>
-        </form>
-        {ocrData ? (
-          <div className="mt-3 rounded-lg bg-slate-50 p-3 text-sm">
-            <p className="font-semibold">Auto-fill Hints</p>
-            <p>Title: {ocrData.autoFill?.titleHint || "-"}</p>
-            <p>Reference: {ocrData.autoFill?.referenceNumberHint || "-"}</p>
-            <p>Date: {ocrData.autoFill?.dateHint || "-"}</p>
-            <p className="mt-2 text-xs text-slate-600">Extracted text preview:</p>
-            <p className="text-xs text-slate-700">{(ocrData.extractedText || "").slice(0, 1000)}</p>
-          </div>
-        ) : null}
-      </section>
+      {activeTab === "chat" ? (
+        <section className="rounded-xl border p-4 dark:border-slate-700">
+          <h3 className="mb-3 font-semibold">AI Chat Assistant</h3>
+          <form className="grid gap-2 md:grid-cols-4" onSubmit={askChat}>
+            <input className="rounded-lg border px-3 py-2 md:col-span-3 dark:border-slate-700 dark:bg-slate-800" placeholder="Ask: How to submit publication?" value={chatQuestion} onChange={(e) => setChatQuestion(e.target.value)} />
+            <button className="rounded-lg bg-brand-600 px-3 py-2 text-white" disabled={isBusy("chat")}>{isBusy("chat") ? "Thinking..." : "Ask"}</button>
+          </form>
+          {chatAnswer ? <p className="mt-2 rounded-lg bg-slate-50 p-3 text-sm dark:bg-slate-800">{chatAnswer}</p> : null}
+        </section>
+      ) : null}
+
+      {activeTab === "ocr" ? (
+        <section className="rounded-xl border p-4 dark:border-slate-700">
+          <h3 className="mb-3 font-semibold">OCR Document Reading</h3>
+          <form className="grid gap-2 md:grid-cols-3" onSubmit={submitOcr}>
+            <input type="file" className="rounded-lg border px-3 py-2 md:col-span-2 dark:border-slate-700 dark:bg-slate-800" onChange={(e) => setOcrFile(e.target.files?.[0] || null)} />
+            <button className="rounded-lg bg-brand-600 px-3 py-2 text-white" disabled={isBusy("ocr")}>{isBusy("ocr") ? "Extracting..." : "Extract Text"}</button>
+          </form>
+          {ocrData ? (
+            <div className="mt-3 rounded-lg bg-slate-50 p-3 text-sm dark:bg-slate-800">
+              <p className="font-semibold">Auto-fill Hints</p>
+              <p>Title: {ocrData.autoFill?.titleHint || "-"}</p>
+              <p>Reference: {ocrData.autoFill?.referenceNumberHint || "-"}</p>
+              <p>Date: {ocrData.autoFill?.dateHint || "-"}</p>
+              <p className="mt-2 text-xs text-slate-600 dark:text-slate-300">Extracted text preview:</p>
+              <p className="text-xs text-slate-700 dark:text-slate-200">{(ocrData.extractedText || "").slice(0, 1000)}</p>
+            </div>
+          ) : null}
+        </section>
+      ) : null}
     </div>
   );
 };
 
 const CardList = ({ title, items }) => (
-  <div className="rounded-lg bg-slate-50 p-3">
-    <p className="mb-2 font-semibold text-slate-700">{title}</p>
+  <div className="rounded-lg bg-slate-50 p-3 dark:bg-slate-800">
+    <p className="mb-2 font-semibold text-slate-700 dark:text-slate-100">{title}</p>
     <ul className="space-y-1 text-sm">
       {items.map((item, idx) => (
         <li key={`${title}-${idx}`}>- {item}</li>
@@ -456,9 +452,9 @@ const CardList = ({ title, items }) => (
 );
 
 const MiniStat = ({ label, value }) => (
-  <div className="rounded-lg bg-slate-50 p-3">
-    <p className="text-xs text-slate-500">{label}</p>
-    <p className="text-xl font-semibold text-brand-700">{value}</p>
+  <div className="rounded-lg bg-slate-50 p-3 dark:bg-slate-800">
+    <p className="text-xs text-slate-500 dark:text-slate-400">{label}</p>
+    <p className="text-xl font-semibold text-brand-700 dark:text-brand-100">{value}</p>
   </div>
 );
 

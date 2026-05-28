@@ -2,6 +2,7 @@ const { calculatePublicationScore } = require("../utils/score");
 const catchAsync = require("../utils/catchAsync");
 const { createNotification, createRoleNotifications } = require("../services/notificationService");
 const { createAuditLog } = require("../services/auditService");
+const { resolveUploadUrl } = require("../services/fileStorageService");
 
 const canEditRecord = (record, user) => {
   if (["admin", "super_admin"].includes(user.role)) return true;
@@ -87,9 +88,17 @@ const buildRecordController = ({ model, entityName }) => {
       department: req.user.department || req.body.department,
     };
 
-    if (req.file) payload.documentUrl = `/uploads/${req.file.filename}`;
-    if (req.file && entityName === "patent") payload.certificateUrl = `/uploads/${req.file.filename}`;
-    if (req.file && entityName === "event") payload.certificateUrl = `/uploads/${req.file.filename}`;
+    if (req.file) {
+      const uploaded = await resolveUploadUrl(req.file, {
+        folder: `frms/${entityName}`,
+        resourceType: "raw",
+      });
+      if (entityName === "patent" || entityName === "event") {
+        payload.certificateUrl = uploaded?.url;
+      } else {
+        payload.documentUrl = uploaded?.url;
+      }
+    }
 
     const item = await model.create(payload);
 
@@ -158,10 +167,14 @@ const buildRecordController = ({ model, entityName }) => {
 
     Object.assign(item, normalizePayload(req.body));
     if (req.file) {
+      const uploaded = await resolveUploadUrl(req.file, {
+        folder: `frms/${entityName}`,
+        resourceType: "raw",
+      });
       if (entityName === "patent" || entityName === "event") {
-        item.certificateUrl = `/uploads/${req.file.filename}`;
+        item.certificateUrl = uploaded?.url;
       } else {
-        item.documentUrl = `/uploads/${req.file.filename}`;
+        item.documentUrl = uploaded?.url;
       }
     }
 

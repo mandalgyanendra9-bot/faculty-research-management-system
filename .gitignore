@@ -5,3 +5,4 @@ frontend/dist/
 backend/src/uploads/*
 !backend/src/uploads/.gitkeep
 .env
+backend/tmp-backend-*.log

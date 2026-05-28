@@ -6,7 +6,16 @@ const ProtectedRoute = ({ children, roles }) => {
   const location = useLocation();
 
   if (loading) {
-    return <div className="grid min-h-screen place-items-center text-brand-700">Loading...</div>;
+    return (
+      <div className="grid min-h-screen place-items-center px-4 text-center">
+        <div className="space-y-2">
+          <p className="text-base font-semibold text-brand-700">Loading FRMS workspace...</p>
+          <p className="text-xs text-slate-500 dark:text-slate-400">
+            If backend is on Render free tier, first request may take a few seconds (cold start).
+          </p>
+        </div>
+      </div>
+    );
   }
 
   if (!user) {
@@ -14,7 +23,7 @@ const ProtectedRoute = ({ children, roles }) => {
   }
 
   if (roles?.length && !roles.includes(user.role)) {
-    return <Navigate to="/dashboard" replace />;
+    return <Navigate to="/app/dashboard" replace />;
   }
 
   return children;

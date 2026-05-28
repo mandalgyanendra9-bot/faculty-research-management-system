@@ -3,6 +3,10 @@ const Department = require("../models/Department");
 const Lookup = require("../models/Lookup");
 const catchAsync = require("../utils/catchAsync");
 const { ensureRegistrationDefaults } = require("../services/registrationDefaultsService");
+const { createAuditLog } = require("../services/auditService");
+const { createNotification } = require("../services/notificationService");
+
+const assignableRoles = new Set(["faculty", "hod_dean", "research_coordinator"]);
 
 const listUsers = async (req, res) => {
   const { role, department, active, search = "" } = req.query;
@@ -36,6 +40,83 @@ const updateUser = async (req, res) => {
 
   if (!user) return res.status(404).json({ success: false, message: "User not found" });
   return res.json({ success: true, message: "User updated", data: user });
+};
+
+const listPendingUsers = async (_req, res) => {
+  const users = await User.find({ role: "faculty", isActive: false })
+    .populate("department", "name code")
+    .select("-password")
+    .sort({ createdAt: -1 });
+  res.json({ success: true, data: users });
+};
+
+const approvePendingFaculty = async (req, res) => {
+  const user = await User.findById(req.params.id).select("-password");
+  if (!user) return res.status(404).json({ success: false, message: "User not found" });
+  if (user.role !== "faculty") {
+    return res.status(400).json({ success: false, message: "Only faculty pending approvals are supported here" });
+  }
+
+  user.isActive = true;
+  await user.save();
+
+  await createAuditLog(req, {
+    action: "approve_pending_faculty",
+    module: "users",
+    targetType: "user",
+    targetId: user._id,
+    status: "success",
+    details: { approvedUserEmail: user.email, role: user.role },
+  });
+
+  await createNotification({
+    recipient: user._id,
+    title: "Account approved",
+    message: "Your FRMS account has been approved. You can now login.",
+    type: "system",
+    entityType: "user",
+    entityId: user._id,
+  });
+
+  return res.json({ success: true, message: "Faculty account approved", data: user });
+};
+
+const assignUserRole = async (req, res) => {
+  const { role } = req.body;
+  if (!assignableRoles.has(role)) {
+    return res.status(400).json({
+      success: false,
+      message: "Invalid role. Allowed roles: faculty, hod_dean, research_coordinator",
+    });
+  }
+
+  const user = await User.findById(req.params.id).select("-password");
+  if (!user) return res.status(404).json({ success: false, message: "User not found" });
+
+  const previousRole = user.role;
+  user.role = role;
+  if (!user.isActive) user.isActive = true;
+  await user.save();
+
+  await createAuditLog(req, {
+    action: "role_change",
+    module: "users",
+    targetType: "user",
+    targetId: user._id,
+    status: "success",
+    details: { email: user.email, previousRole, newRole: user.role },
+  });
+
+  await createNotification({
+    recipient: user._id,
+    title: "Role updated",
+    message: `Your role has been updated from ${previousRole} to ${user.role}.`,
+    type: "system",
+    entityType: "user",
+    entityId: user._id,
+  });
+
+  return res.json({ success: true, message: "User role updated", data: user });
 };
 
 const toggleUserStatus = async (req, res) => {
@@ -100,6 +181,9 @@ const deleteLookup = async (req, res) => {
 module.exports = {
   listUsers: catchAsync(listUsers),
   updateUser: catchAsync(updateUser),
+  listPendingUsers: catchAsync(listPendingUsers),
+  approvePendingFaculty: catchAsync(approvePendingFaculty),
+  assignUserRole: catchAsync(assignUserRole),
   toggleUserStatus: catchAsync(toggleUserStatus),
   createDepartment: catchAsync(createDepartment),
   listDepartments: catchAsync(listDepartments),

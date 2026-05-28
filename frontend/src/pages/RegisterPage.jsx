@@ -55,7 +55,7 @@ const RegisterPage = () => {
       const result = await register(payload);
 
       if (result.status === "active") {
-        navigate("/dashboard", { replace: true });
+        navigate("/app/dashboard", { replace: true });
         return;
       }
 
@@ -67,6 +67,7 @@ const RegisterPage = () => {
         department: "",
         designation: "",
       });
+      navigate("/pending-approval", { replace: true });
     } catch (error) {
       toast.error(error.response?.data?.message || "Registration failed");
     } finally {

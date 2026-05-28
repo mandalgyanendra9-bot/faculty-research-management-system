@@ -2,6 +2,7 @@ const fs = require("fs");
 const path = require("path");
 const PDFDocument = require("pdfkit");
 const ExcelJS = require("exceljs");
+const { uploadGeneratedFile, safeRemoveLocalFile } = require("./fileStorageService");
 
 const reportDir = path.join(__dirname, "..", "uploads", "reports");
 if (!fs.existsSync(reportDir)) fs.mkdirSync(reportDir, { recursive: true });
@@ -26,10 +27,17 @@ const generatePdfReport = async ({ title, rows = [], columns = [] }) => {
 
   doc.end();
 
-  return new Promise((resolve) => {
-    doc.on("end", () => resolve({ fileName, fullPath }));
-    setTimeout(() => resolve({ fileName, fullPath }), 300);
+  await new Promise((resolve) => {
+    doc.on("end", resolve);
+    setTimeout(resolve, 300);
   });
+
+  const uploaded = await uploadGeneratedFile(fullPath, {
+    folder: "frms/reports",
+    resourceType: "raw",
+  });
+  if (uploaded.provider === "cloudinary") await safeRemoveLocalFile(fullPath);
+  return { fileName, fullPath, fileUrl: uploaded.url };
 };
 
 const generateExcelReport = async ({ sheetName, rows = [], columns = [] }) => {
@@ -44,7 +52,12 @@ const generateExcelReport = async ({ sheetName, rows = [], columns = [] }) => {
   sheet.getRow(1).font = { bold: true };
 
   await workbook.xlsx.writeFile(fullPath);
-  return { fileName, fullPath };
+  const uploaded = await uploadGeneratedFile(fullPath, {
+    folder: "frms/reports",
+    resourceType: "raw",
+  });
+  if (uploaded.provider === "cloudinary") await safeRemoveLocalFile(fullPath);
+  return { fileName, fullPath, fileUrl: uploaded.url };
 };
 
 module.exports = { generatePdfReport, generateExcelReport, reportDir };

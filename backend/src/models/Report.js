@@ -5,7 +5,7 @@ const reportSchema = new mongoose.Schema(
     generatedBy: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
     type: {
       type: String,
-      enum: ["faculty_wise", "department_wise", "year_wise", "naac", "nba_nirf", "api_score"],
+      enum: ["faculty_wise", "department_wise", "year_wise", "naac", "nba", "nirf", "api_score", "faculty_api_score"],
       required: true,
     },
     format: { type: String, enum: ["pdf", "excel"], required: true },
