@@ -12,11 +12,11 @@ const RegisterPage = () => {
     name: "",
     email: "",
     password: "",
-    role: "faculty",
     department: "",
     designation: "",
   });
   const [submitting, setSubmitting] = useState(false);
+  const [successMessage, setSuccessMessage] = useState("");
 
   useEffect(() => {
     const load = async () => {
@@ -33,9 +33,30 @@ const RegisterPage = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setSubmitting(true);
+    setSuccessMessage("");
     try {
-      await register(form);
-      navigate("/dashboard", { replace: true });
+      const payload = {
+        name: form.name,
+        email: form.email,
+        password: form.password,
+        department: form.department || undefined,
+        designation: form.designation || undefined,
+      };
+      const result = await register(payload);
+
+      if (result.status === "active") {
+        navigate("/dashboard", { replace: true });
+        return;
+      }
+
+      setSuccessMessage("Registration submitted. Please wait for admin approval.");
+      setForm({
+        name: "",
+        email: "",
+        password: "",
+        department: "",
+        designation: "",
+      });
     } catch (error) {
       toast.error(error.response?.data?.message || "Registration failed");
     } finally {
@@ -83,19 +104,6 @@ const RegisterPage = () => {
           </div>
 
           <div>
-            <label className="mb-1 block text-sm font-medium">Role</label>
-            <select
-              className="w-full rounded-lg border px-3 py-2"
-              value={form.role}
-              onChange={(e) => setForm((prev) => ({ ...prev, role: e.target.value }))}
-            >
-              <option value="faculty">Faculty</option>
-              <option value="research_coordinator">Research Coordinator</option>
-              <option value="hod_dean">HOD/Dean</option>
-            </select>
-          </div>
-
-          <div>
             <label className="mb-1 block text-sm font-medium">Department</label>
             <select
               className="w-full rounded-lg border px-3 py-2"
@@ -130,6 +138,12 @@ const RegisterPage = () => {
             </button>
           </div>
         </form>
+
+        {successMessage ? (
+          <p className="mt-4 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-700">
+            {successMessage}
+          </p>
+        ) : null}
 
         <p className="mt-4 text-sm text-slate-600">
           Already have an account? <Link to="/login" className="text-brand-600">Login</Link>

@@ -37,10 +37,26 @@ export const AuthProvider = ({ children }) => {
   };
 
   const register = async (payload) => {
-    const { data } = await api.post("/auth/register", payload);
-    localStorage.setItem("frms_token", data.data.token);
-    setUser(data.data.user);
-    toast.success("Account created");
+    const safePayload = {
+      name: payload?.name,
+      email: payload?.email,
+      password: payload?.password,
+      department: payload?.department || undefined,
+      designation: payload?.designation || undefined,
+    };
+
+    const { data } = await api.post("/auth/register", safePayload);
+    const token = data?.data?.token;
+
+    if (token) {
+      localStorage.setItem("frms_token", token);
+      setUser(data.data.user);
+      toast.success("Account created");
+      return { status: "active", data: data.data };
+    }
+
+    toast.success("Registration submitted. Please wait for admin approval.");
+    return { status: "pending", data: data.data };
   };
 
   const logout = () => {
