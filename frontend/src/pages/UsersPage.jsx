@@ -1,13 +1,44 @@
 import { useEffect, useMemo, useState } from "react";
+import { Eye, Loader2, ShieldAlert } from "lucide-react";
 import toast from "react-hot-toast";
 import api from "../api/client";
+import Modal from "../components/ui/Modal";
 import StatusBadge from "../components/ui/StatusBadge";
+import { roleLabels } from "../config";
+import { toBackendFileUrl } from "../config/api";
 
 const roleOptions = [
   { value: "faculty", label: "Faculty" },
   { value: "hod_dean", label: "HOD / Dean" },
   { value: "research_coordinator", label: "Research Coordinator" },
 ];
+
+const formatRoleLabel = (role) =>
+  roleLabels[role] || role?.replace(/_/g, " ").replace(/\b\w/g, (char) => char.toUpperCase()) || "-";
+
+const getInitials = (name = "") =>
+  name
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase())
+    .join("") || "U";
+
+const Avatar = ({ name, photoUrl, className = "h-12 w-12" }) => {
+  const src = photoUrl ? toBackendFileUrl(photoUrl) : "";
+
+  return (
+    <div
+      className={`${className} grid place-items-center overflow-hidden rounded-full border border-slate-200 bg-gradient-to-br from-brand-100 via-slate-100 to-brand-200 text-sm font-semibold text-brand-800 dark:border-slate-700 dark:from-slate-700 dark:via-slate-800 dark:to-slate-900 dark:text-brand-100`}
+    >
+      {src ? (
+        <img src={src} alt={name || "Profile photo"} className="h-full w-full object-cover" />
+      ) : (
+        <span>{getInitials(name)}</span>
+      )}
+    </div>
+  );
+};
 
 const UsersPage = () => {
   const [users, setUsers] = useState([]);
@@ -16,9 +47,15 @@ const UsersPage = () => {
   const [departments, setDepartments] = useState([]);
   const [lookups, setLookups] = useState([]);
   const [busyId, setBusyId] = useState("");
+  const [profileBusyId, setProfileBusyId] = useState("");
   const [deptForm, setDeptForm] = useState({ name: "", code: "", school: "" });
   const [lookupForm, setLookupForm] = useState({ type: "designation", value: "" });
   const [roleDrafts, setRoleDrafts] = useState({});
+  const [profileDialogOpen, setProfileDialogOpen] = useState(false);
+  const [profileDialogLoading, setProfileDialogLoading] = useState(false);
+  const [profileDialogError, setProfileDialogError] = useState("");
+  const [selectedProfile, setSelectedProfile] = useState(null);
+  const [selectedUser, setSelectedUser] = useState(null);
 
   const loadUsers = async () => {
     try {
@@ -70,13 +107,39 @@ const UsersPage = () => {
   useEffect(() => {
     const drafts = {};
     users.forEach((user) => {
-      drafts[user._id] = user.role;
+      drafts[user._id] = roleOptions.some((option) => option.value === user.role) ? user.role : "";
     });
     setRoleDrafts(drafts);
   }, [users]);
 
   const refreshUserData = async () => {
     await Promise.all([loadUsers(), loadPendingUsers()]);
+  };
+
+  const openProfile = async (user) => {
+    setSelectedUser(user);
+    setSelectedProfile(null);
+    setProfileDialogError("");
+    setProfileDialogOpen(true);
+    setProfileDialogLoading(true);
+    setProfileBusyId(user._id);
+
+    try {
+      const { data } = await api.get(`/faculty/${user._id}`);
+      setSelectedProfile(data.data);
+    } catch (error) {
+      setProfileDialogError(error.response?.data?.message || "Failed to load profile details");
+    } finally {
+      setProfileDialogLoading(false);
+      setProfileBusyId("");
+    }
+  };
+
+  const closeProfile = () => {
+    setProfileDialogOpen(false);
+    setSelectedProfile(null);
+    setSelectedUser(null);
+    setProfileDialogError("");
   };
 
   const toggleStatus = async (id) => {
@@ -107,6 +170,10 @@ const UsersPage = () => {
 
   const assignRole = async (id) => {
     const role = roleDrafts[id];
+    if (!role) {
+      toast.error("Select a role before assigning");
+      return;
+    }
     setBusyId(id);
     try {
       await api.patch(`/users/${id}/assign-role`, { role });
@@ -151,6 +218,18 @@ const UsersPage = () => {
     }),
     [lookups]
   );
+
+  const profileUser = selectedProfile?.user || selectedUser;
+  const profilePhotoUrl =
+    selectedProfile?.profileImageUrl ||
+    selectedProfile?.profilePhotoUrl ||
+    selectedUser?.profileImageUrl ||
+    selectedUser?.profilePhotoUrl ||
+    selectedUser?.facultyProfile?.profileImageUrl ||
+    selectedUser?.facultyProfile?.profilePhotoUrl ||
+    "";
+  const profileCounts = selectedProfile?.counts || { publications: 0, projects: 0, patents: 0 };
+  const listText = (value) => (Array.isArray(value) ? (value.length ? value.join(", ") : "-") : value || "-");
 
   return (
     <div className="space-y-8">
@@ -200,12 +279,14 @@ const UsersPage = () => {
       <section className="space-y-3">
         <h2 className="text-xl font-semibold">User Management</h2>
         <div className="overflow-x-auto">
-          <table className="min-w-full text-sm">
+          <table className="min-w-[1200px] text-sm">
             <thead>
               <tr className="border-b text-left text-slate-600 dark:text-slate-300">
                 <th className="py-2">Name</th>
+                <th>Avatar / Profile Photo</th>
                 <th>Email</th>
-                <th>Role</th>
+                <th>Current Role</th>
+                <th>Assign Role</th>
                 <th>Department</th>
                 <th>Status</th>
                 <th>Actions</th>
@@ -214,15 +295,26 @@ const UsersPage = () => {
             <tbody>
               {users.map((user) => (
                 <tr key={user._id} className="border-b border-slate-200 dark:border-slate-700">
-                  <td className="py-2">{user.name}</td>
+                  <td className="py-3 font-medium text-slate-800 dark:text-slate-100">{user.name}</td>
+                  <td>
+                    <Avatar name={user.name} photoUrl={user.profileImageUrl || user.profilePhotoUrl || user.facultyProfile?.profileImageUrl || user.facultyProfile?.profilePhotoUrl} />
+                  </td>
                   <td>{user.email}</td>
-                  <td className="min-w-[220px]">
+                  <td>
+                    <span className="inline-flex rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-700 dark:bg-slate-800 dark:text-slate-200">
+                      {formatRoleLabel(user.role)}
+                    </span>
+                  </td>
+                  <td className="min-w-[250px]">
                     <div className="flex items-center gap-2">
                       <select
                         className="rounded border border-slate-300 px-2 py-1 text-xs dark:border-slate-700 dark:bg-slate-800"
-                        value={roleDrafts[user._id] || user.role}
+                        value={roleDrafts[user._id] ?? ""}
                         onChange={(e) => setRoleDrafts((prev) => ({ ...prev, [user._id]: e.target.value }))}
                       >
+                        <option value="" disabled>
+                          Select role
+                        </option>
                         {roleOptions.map((role) => (
                           <option key={role.value} value={role.value}>
                             {role.label}
@@ -231,7 +323,7 @@ const UsersPage = () => {
                       </select>
                       <button
                         type="button"
-                        disabled={busyId === user._id}
+                        disabled={busyId === user._id || !roleDrafts[user._id]}
                         onClick={() => assignRole(user._id)}
                         className="rounded bg-brand-600 px-2 py-1 text-xs font-semibold text-white disabled:opacity-60"
                       >
@@ -244,14 +336,25 @@ const UsersPage = () => {
                     <StatusBadge status={user.isActive ? "active" : "inactive"} />
                   </td>
                   <td>
-                    <button
-                      type="button"
-                      className="rounded bg-slate-100 px-2 py-1 text-xs dark:bg-slate-800"
-                      onClick={() => toggleStatus(user._id)}
-                      disabled={busyId === user._id}
-                    >
-                      {busyId === user._id ? "Updating..." : user.isActive ? "Deactivate" : "Activate"}
-                    </button>
+                    <div className="flex flex-wrap gap-2">
+                      <button
+                        type="button"
+                        className="inline-flex items-center gap-1 rounded bg-slate-100 px-2 py-1 text-xs dark:bg-slate-800"
+                        onClick={() => openProfile(user)}
+                        disabled={profileBusyId === user._id}
+                      >
+                        {profileBusyId === user._id && profileDialogOpen ? <Loader2 size={14} className="animate-spin" /> : <Eye size={14} />}
+                        View Profile
+                      </button>
+                      <button
+                        type="button"
+                        className="rounded bg-slate-100 px-2 py-1 text-xs dark:bg-slate-800"
+                        onClick={() => toggleStatus(user._id)}
+                        disabled={busyId === user._id}
+                      >
+                        {busyId === user._id ? "Updating..." : user.isActive ? "Deactivate" : "Activate"}
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -259,6 +362,129 @@ const UsersPage = () => {
           </table>
         </div>
       </section>
+
+      {profileDialogOpen ? (
+        <Modal title="User Profile Details" onClose={closeProfile}>
+          {profileDialogLoading ? (
+            <div className="grid place-items-center gap-3 py-10 text-sm text-slate-500 dark:text-slate-400">
+              <Loader2 size={24} className="animate-spin" />
+              Loading profile details...
+            </div>
+          ) : profileDialogError ? (
+            <div className="rounded-xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-700 dark:border-rose-900/40 dark:bg-rose-950/30 dark:text-rose-200">
+              {profileDialogError}
+            </div>
+          ) : (
+            <div className="space-y-6">
+              <div className="flex flex-col gap-4 rounded-2xl bg-slate-50 p-4 dark:bg-slate-800/60 md:flex-row md:items-center">
+                <Avatar name={profileUser?.name} photoUrl={profilePhotoUrl} className="h-20 w-20" />
+                <div className="min-w-0 flex-1">
+                  <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">Profile Preview</p>
+                  <h4 className="truncate text-xl font-semibold text-slate-900 dark:text-slate-100">{profileUser?.name || "-"}</h4>
+                  <p className="truncate text-sm text-slate-500 dark:text-slate-400">{profileUser?.email || "-"}</p>
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    <span className="inline-flex rounded-full bg-brand-100 px-3 py-1 text-xs font-semibold text-brand-800 dark:bg-brand-900/30 dark:text-brand-100">
+                      {formatRoleLabel(profileUser?.role)}
+                    </span>
+                    <span className="inline-flex rounded-full bg-slate-200 px-3 py-1 text-xs font-semibold text-slate-700 dark:bg-slate-700 dark:text-slate-200">
+                      {profileUser?.department?.name || "No department"}
+                    </span>
+                    {profileUser?.designation ? (
+                      <span className="inline-flex rounded-full bg-slate-200 px-3 py-1 text-xs font-semibold text-slate-700 dark:bg-slate-700 dark:text-slate-200">
+                        {profileUser.designation}
+                      </span>
+                    ) : null}
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid gap-3 sm:grid-cols-3">
+                <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Publications</p>
+                  <p className="mt-2 text-3xl font-semibold text-slate-900 dark:text-slate-100">{profileCounts.publications}</p>
+                </div>
+                <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Projects</p>
+                  <p className="mt-2 text-3xl font-semibold text-slate-900 dark:text-slate-100">{profileCounts.projects}</p>
+                </div>
+                <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Patents</p>
+                  <p className="mt-2 text-3xl font-semibold text-slate-900 dark:text-slate-100">{profileCounts.patents}</p>
+                </div>
+              </div>
+
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="rounded-2xl border border-slate-200 p-4 dark:border-slate-700">
+                  <h5 className="mb-3 text-sm font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Faculty Details</h5>
+                  <dl className="space-y-3 text-sm">
+                    <div className="flex gap-3">
+                      <dt className="w-36 shrink-0 text-slate-500 dark:text-slate-400">Employee ID</dt>
+                      <dd className="font-medium text-slate-800 dark:text-slate-100">{selectedProfile?.employeeId || "-"}</dd>
+                    </div>
+                    <div className="flex gap-3">
+                      <dt className="w-36 shrink-0 text-slate-500 dark:text-slate-400">Qualification</dt>
+                      <dd className="font-medium text-slate-800 dark:text-slate-100">{selectedProfile?.qualification || "-"}</dd>
+                    </div>
+                    <div className="flex gap-3">
+                      <dt className="w-36 shrink-0 text-slate-500 dark:text-slate-400">Department</dt>
+                      <dd className="font-medium text-slate-800 dark:text-slate-100">{profileUser?.department?.name || "-"}</dd>
+                    </div>
+                    <div className="flex gap-3">
+                      <dt className="w-36 shrink-0 text-slate-500 dark:text-slate-400">Designation</dt>
+                      <dd className="font-medium text-slate-800 dark:text-slate-100">{profileUser?.designation || "-"}</dd>
+                    </div>
+                    <div className="flex gap-3">
+                      <dt className="w-36 shrink-0 text-slate-500 dark:text-slate-400">Research Interests</dt>
+                      <dd className="font-medium text-slate-800 dark:text-slate-100">{listText(selectedProfile?.researchInterests)}</dd>
+                    </div>
+                  </dl>
+                </div>
+
+                <div className="rounded-2xl border border-slate-200 p-4 dark:border-slate-700">
+                  <h5 className="mb-3 text-sm font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Research IDs</h5>
+                  <dl className="space-y-3 text-sm">
+                    <div className="flex gap-3">
+                      <dt className="w-36 shrink-0 text-slate-500 dark:text-slate-400">Google Scholar</dt>
+                      <dd className="font-medium text-slate-800 dark:text-slate-100">{selectedProfile?.googleScholarId || "-"}</dd>
+                    </div>
+                    <div className="flex gap-3">
+                      <dt className="w-36 shrink-0 text-slate-500 dark:text-slate-400">ORCID</dt>
+                      <dd className="font-medium text-slate-800 dark:text-slate-100">{selectedProfile?.orcidId || "-"}</dd>
+                    </div>
+                    <div className="flex gap-3">
+                      <dt className="w-36 shrink-0 text-slate-500 dark:text-slate-400">Scopus</dt>
+                      <dd className="font-medium text-slate-800 dark:text-slate-100">{selectedProfile?.scopusId || "-"}</dd>
+                    </div>
+                    <div className="flex gap-3">
+                      <dt className="w-36 shrink-0 text-slate-500 dark:text-slate-400">Research Areas</dt>
+                      <dd className="font-medium text-slate-800 dark:text-slate-100">{listText(selectedProfile?.areaOfExpertise)}</dd>
+                    </div>
+                    <div className="flex gap-3">
+                      <dt className="w-36 shrink-0 text-slate-500 dark:text-slate-400">Bio</dt>
+                      <dd className="font-medium text-slate-800 dark:text-slate-100">{selectedProfile?.bio || "-"}</dd>
+                    </div>
+                  </dl>
+                </div>
+              </div>
+
+              {!selectedProfile?.qualification &&
+              !selectedProfile?.employeeId &&
+              !selectedProfile?.googleScholarId &&
+              !selectedProfile?.orcidId &&
+              !selectedProfile?.scopusId &&
+              !selectedProfile?.researchInterests?.length ? (
+                <div className="flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800 dark:border-amber-900/40 dark:bg-amber-950/30 dark:text-amber-200">
+                  <ShieldAlert size={18} className="mt-0.5 shrink-0" />
+                  <div>
+                    <p className="font-semibold">No faculty profile data yet</p>
+                    <p className="mt-1">This account has not uploaded a faculty profile, so only the core user details are available.</p>
+                  </div>
+                </div>
+              ) : null}
+            </div>
+          )}
+        </Modal>
+      ) : null}
 
       <section className="grid gap-4 md:grid-cols-2">
         <div className="rounded-xl border p-4 dark:border-slate-700">

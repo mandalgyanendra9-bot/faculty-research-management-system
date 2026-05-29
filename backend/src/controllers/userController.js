@@ -1,4 +1,5 @@
 const User = require("../models/User");
+const FacultyProfile = require("../models/FacultyProfile");
 const Department = require("../models/Department");
 const Lookup = require("../models/Lookup");
 const catchAsync = require("../utils/catchAsync");
@@ -27,7 +28,34 @@ const listUsers = async (req, res) => {
     .select("-password")
     .sort({ createdAt: -1 });
 
-  res.json({ success: true, data: users });
+  const userIds = users.map((user) => user._id);
+  const facultyProfiles = await FacultyProfile.find({ user: { $in: userIds } }).select(
+    "user profilePhotoUrl employeeId qualification researchInterests googleScholarId orcidId scopusId areaOfExpertise bio joinedAt phone"
+  );
+  const profileByUserId = new Map(
+    facultyProfiles.map((profile) => [String(profile.user), profile.toObject({ virtuals: true })])
+  );
+
+  const data = users.map((user) => {
+    const userObject = user.toObject();
+    const profile = profileByUserId.get(String(user._id));
+    const profilePhotoUrl = profile?.profilePhotoUrl || profile?.profileImageUrl || "";
+
+    return {
+      ...userObject,
+      profilePhotoUrl,
+      profileImageUrl: profilePhotoUrl,
+      facultyProfile: profile
+        ? {
+            ...profile,
+            profilePhotoUrl,
+            profileImageUrl: profilePhotoUrl,
+          }
+        : null,
+    };
+  });
+
+  res.json({ success: true, data });
 };
 
 const updateUser = async (req, res) => {
