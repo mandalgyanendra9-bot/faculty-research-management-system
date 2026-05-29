@@ -2,6 +2,7 @@ import { LogOut, Menu, Moon, Sun } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
 import { roleLabels } from "../../config";
 import { useTheme } from "../../context/ThemeContext";
+import ProfileAvatar from "../ui/ProfileAvatar";
 
 const Topbar = ({ onToggleMobile }) => {
   const { user, logout } = useAuth();
@@ -17,6 +18,13 @@ const Topbar = ({ onToggleMobile }) => {
         >
           <Menu size={18} />
         </button>
+
+        <ProfileAvatar
+          name={user?.name}
+          photoUrl={user?.profilePhotoUrl || user?.profileImageUrl}
+          className="h-11 w-11 shrink-0"
+          textClassName="text-xs"
+        />
 
         <div className="min-w-0">
           <p className="truncate text-base font-semibold text-slate-800 dark:text-slate-100 md:text-lg">Welcome, {user?.name}</p>

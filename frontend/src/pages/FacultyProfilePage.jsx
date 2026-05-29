@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
 import api from "../api/client";
+import ProfileAvatar from "../components/ui/ProfileAvatar";
+import { roleLabels } from "../config";
 
 const FacultyProfilePage = () => {
   const [profile, setProfile] = useState(null);
@@ -65,7 +67,23 @@ const FacultyProfilePage = () => {
 
   return (
     <div className="space-y-4">
-      <h2 className="text-xl font-semibold">Faculty Profile</h2>
+      <div className="flex flex-col gap-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900 md:flex-row md:items-center">
+        <ProfileAvatar
+          name={profile?.user?.name}
+          photoUrl={profile?.profilePhotoUrl || profile?.profileImageUrl}
+          className="h-20 w-20 shrink-0"
+          textClassName="text-lg"
+        />
+        <div className="min-w-0">
+          <h2 className="truncate text-xl font-semibold text-slate-900 dark:text-slate-100">Faculty Profile</h2>
+          <p className="truncate text-sm text-slate-500 dark:text-slate-400">{profile?.user?.name || "No profile loaded"}</p>
+          <p className="truncate text-sm text-slate-500 dark:text-slate-400">{profile?.user?.email || "-"}</p>
+          <p className="truncate text-xs font-medium uppercase tracking-[0.2em] text-brand-700 dark:text-brand-300">
+            {roleLabels[profile?.user?.role] || profile?.user?.role || "-"}
+          </p>
+        </div>
+      </div>
+
       <form className="grid grid-cols-1 gap-4 md:grid-cols-2" onSubmit={saveProfile}>
         {Object.entries(form).map(([key, value]) => (
           <div key={key} className={key === "bio" ? "md:col-span-2" : ""}>

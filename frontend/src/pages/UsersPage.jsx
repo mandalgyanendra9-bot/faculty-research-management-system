@@ -3,9 +3,9 @@ import { Eye, Loader2, ShieldAlert } from "lucide-react";
 import toast from "react-hot-toast";
 import api from "../api/client";
 import Modal from "../components/ui/Modal";
+import ProfileAvatar from "../components/ui/ProfileAvatar";
 import StatusBadge from "../components/ui/StatusBadge";
 import { roleLabels } from "../config";
-import { toBackendFileUrl } from "../config/api";
 
 const roleOptions = [
   { value: "faculty", label: "Faculty" },
@@ -15,30 +15,6 @@ const roleOptions = [
 
 const formatRoleLabel = (role) =>
   roleLabels[role] || role?.replace(/_/g, " ").replace(/\b\w/g, (char) => char.toUpperCase()) || "-";
-
-const getInitials = (name = "") =>
-  name
-    .split(/\s+/)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((part) => part[0]?.toUpperCase())
-    .join("") || "U";
-
-const Avatar = ({ name, photoUrl, className = "h-12 w-12" }) => {
-  const src = photoUrl ? toBackendFileUrl(photoUrl) : "";
-
-  return (
-    <div
-      className={`${className} grid place-items-center overflow-hidden rounded-full border border-slate-200 bg-gradient-to-br from-brand-100 via-slate-100 to-brand-200 text-sm font-semibold text-brand-800 dark:border-slate-700 dark:from-slate-700 dark:via-slate-800 dark:to-slate-900 dark:text-brand-100`}
-    >
-      {src ? (
-        <img src={src} alt={name || "Profile photo"} className="h-full w-full object-cover" />
-      ) : (
-        <span>{getInitials(name)}</span>
-      )}
-    </div>
-  );
-};
 
 const UsersPage = () => {
   const [users, setUsers] = useState([]);
@@ -297,7 +273,10 @@ const UsersPage = () => {
                 <tr key={user._id} className="border-b border-slate-200 dark:border-slate-700">
                   <td className="py-3 font-medium text-slate-800 dark:text-slate-100">{user.name}</td>
                   <td>
-                    <Avatar name={user.name} photoUrl={user.profileImageUrl || user.profilePhotoUrl || user.facultyProfile?.profileImageUrl || user.facultyProfile?.profilePhotoUrl} />
+                    <ProfileAvatar
+                      name={user.name}
+                      photoUrl={user.profileImageUrl || user.profilePhotoUrl || user.facultyProfile?.profileImageUrl || user.facultyProfile?.profilePhotoUrl}
+                    />
                   </td>
                   <td>{user.email}</td>
                   <td>
@@ -377,7 +356,7 @@ const UsersPage = () => {
           ) : (
             <div className="space-y-6">
               <div className="flex flex-col gap-4 rounded-2xl bg-slate-50 p-4 dark:bg-slate-800/60 md:flex-row md:items-center">
-                <Avatar name={profileUser?.name} photoUrl={profilePhotoUrl} className="h-20 w-20" />
+                <ProfileAvatar name={profileUser?.name} photoUrl={profilePhotoUrl} className="h-20 w-20" textClassName="text-lg" />
                 <div className="min-w-0 flex-1">
                   <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">Profile Preview</p>
                   <h4 className="truncate text-xl font-semibold text-slate-900 dark:text-slate-100">{profileUser?.name || "-"}</h4>

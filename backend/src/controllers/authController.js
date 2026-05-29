@@ -7,6 +7,23 @@ const { createAuditLog } = require("../services/auditService");
 
 const PRIVILEGED_ROLES = new Set(["super_admin", "admin", "hod_dean", "research_coordinator"]);
 
+const attachProfilePhoto = async (user) => {
+  if (!user) return null;
+
+  const baseUser = typeof user.toObject === "function" ? user.toObject({ depopulate: false }) : { ...user };
+  delete baseUser.password;
+  if (baseUser.role !== "faculty") return baseUser;
+
+  const profile = await FacultyProfile.findOne({ user: baseUser._id }).select("profilePhotoUrl").lean();
+  const profilePhotoUrl = profile?.profilePhotoUrl || "";
+
+  return {
+    ...baseUser,
+    profilePhotoUrl,
+    profileImageUrl: profilePhotoUrl,
+  };
+};
+
 const register = async (req, res) => {
   const { name, email, password, role, department, designation } = req.body;
   const requestedRole = role || "faculty";
@@ -49,6 +66,7 @@ const register = async (req, res) => {
   }
 
   if (!isActive) {
+    const userWithProfilePhoto = await attachProfilePhoto(user);
     return res.status(201).json({
       success: true,
       message: "Registration submitted. Account pending admin approval.",
@@ -59,12 +77,15 @@ const register = async (req, res) => {
           email: user.email,
           role: user.role,
           isActive: user.isActive,
+          profilePhotoUrl: userWithProfilePhoto?.profilePhotoUrl || "",
+          profileImageUrl: userWithProfilePhoto?.profileImageUrl || "",
         },
       },
     });
   }
 
   const token = generateToken({ id: user._id, role: user.role });
+  const userWithProfilePhoto = await attachProfilePhoto(user);
   return res.status(201).json({
     success: true,
     message: "Registration successful",
@@ -76,6 +97,8 @@ const register = async (req, res) => {
         email: user.email,
         role: user.role,
         isActive: user.isActive,
+        profilePhotoUrl: userWithProfilePhoto?.profilePhotoUrl || "",
+        profileImageUrl: userWithProfilePhoto?.profileImageUrl || "",
       },
     },
   });
@@ -107,18 +130,13 @@ const login = async (req, res) => {
     details: { email: user.email, role: user.role },
   });
 
+  const userWithProfilePhoto = await attachProfilePhoto(user);
   return res.json({
     success: true,
     message: "Login successful",
     data: {
       token,
-      user: {
-        id: user._id,
-        name: user.name,
-        email: user.email,
-        role: user.role,
-        department: user.department,
-      },
+      user: userWithProfilePhoto,
     },
   });
 };
@@ -165,7 +183,10 @@ const resetPassword = async (req, res) => {
 
 const me = async (req, res) => {
   const user = await User.findById(req.user._id).populate("department", "name code");
-  res.json({ success: true, data: user });
+  if (!user) return res.status(404).json({ success: false, message: "User not found" });
+
+  const userWithProfilePhoto = await attachProfilePhoto(user);
+  res.json({ success: true, data: userWithProfilePhoto });
 };
 
 module.exports = {

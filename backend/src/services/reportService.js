@@ -4,7 +4,7 @@ const PDFDocument = require("pdfkit");
 const ExcelJS = require("exceljs");
 const { uploadGeneratedFile, safeRemoveLocalFile } = require("./fileStorageService");
 
-const reportDir = path.join(__dirname, "..", "uploads", "reports");
+const reportDir = path.join(process.cwd(), "uploads", "reports");
 if (!fs.existsSync(reportDir)) fs.mkdirSync(reportDir, { recursive: true });
 
 const generatePdfReport = async ({ title, rows = [], columns = [] }) => {
