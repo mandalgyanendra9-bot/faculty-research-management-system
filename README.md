@@ -248,6 +248,7 @@ npm run migrate:profile-photos
 - `CLOUDINARY_CLOUD_NAME`
 - `CLOUDINARY_API_KEY`
 - `CLOUDINARY_API_SECRET`
+- When set, faculty profile photos and other uploads are sent to Cloudinary in production and the returned `secure_url` is stored as `profilePhotoUrl`.
 
 ## Screenshots
 - Add final UI captures to `docs/screenshots/` and update image links below.
@@ -259,7 +260,7 @@ npm run migrate:profile-photos
 
 ## Notes
 - Local upload files are served from `/uploads/*`.
-- If Cloudinary env vars are set, uploaded/generated files use Cloudinary URLs.
+- If Cloudinary env vars are set, uploaded/generated files use Cloudinary URLs, including faculty profile photos.
 - Report files are generated at `/uploads/reports/*`.
 - For image fields, the frontend resolves `/uploads/...` against the backend root so production URLs work on Render and Vercel.
 - Rejection reason is mandatory when rejecting approvals.

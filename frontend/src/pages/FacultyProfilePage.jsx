@@ -59,6 +59,7 @@ const FacultyProfilePage = () => {
     try {
       await api.put("/faculty/me", payload);
       toast.success("Profile updated");
+      setPhoto(null);
       loadProfile();
     } catch (error) {
       toast.error(error.response?.data?.message || "Failed to update profile");
@@ -84,7 +85,7 @@ const FacultyProfilePage = () => {
         </div>
       </div>
 
-      <form className="grid grid-cols-1 gap-4 md:grid-cols-2" onSubmit={saveProfile}>
+      <form className="grid grid-cols-1 gap-4 md:grid-cols-2" encType="multipart/form-data" onSubmit={saveProfile}>
         {Object.entries(form).map(([key, value]) => (
           <div key={key} className={key === "bio" ? "md:col-span-2" : ""}>
             <label className="mb-1 block text-sm font-medium capitalize">{key.replace(/([A-Z])/g, " $1")}</label>
@@ -107,7 +108,12 @@ const FacultyProfilePage = () => {
 
         <div className="md:col-span-2">
           <label className="mb-1 block text-sm font-medium">Profile Photo</label>
-          <input type="file" className="w-full rounded-lg border px-3 py-2" onChange={(e) => setPhoto(e.target.files?.[0] || null)} />
+          <input
+            type="file"
+            accept="image/*"
+            className="w-full rounded-lg border px-3 py-2"
+            onChange={(e) => setPhoto(e.target.files?.[0] || null)}
+          />
         </div>
 
         <div className="md:col-span-2">
