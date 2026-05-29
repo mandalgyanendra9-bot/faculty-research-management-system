@@ -180,6 +180,30 @@ Frontend runs on `http://localhost:5173`
 7. Set `CLIENT_URL` to deployed Vercel frontend URL.
 8. Optional: use `render.yaml` included in project root for IaC setup.
 
+### Profile Photo Migration
+Use the migration script to backfill existing faculty and user profile photo fields safely before or after deployment.
+
+What the migration does:
+- Scans `users` and `facultyprofiles` for legacy image fields such as `avatar`, `profileImage`, `photoUrl`, `profileImageUrl`, and `/uploads/...` values.
+- Keeps `profilePhotoUrl` as the canonical field.
+- Preserves full `http` / `https` URLs as-is.
+- Leaves `/uploads/...` values intact so the backend-root resolver can still resolve them correctly in the frontend.
+- Copies legacy photo fields into `profilePhotoUrl` only when the canonical field is missing.
+
+Safe usage:
+- Dry run first to review the candidate count and ensure nothing is written.
+- The script logs how many records were checked, backfilled, and updated.
+- It is idempotent for the supported fields, so rerunning it will not keep changing already-normalized records.
+- Rollback is safe because the migration does not delete old fields; if you ever need to revert the data layer, restore from a database backup or reset `profilePhotoUrl` from your backup snapshot.
+
+CLI examples:
+```bash
+npm run migrate:profile-photos -- --dry-run
+```
+```bash
+npm run migrate:profile-photos
+```
+
 ### Frontend on Vercel
 1. Import repository in Vercel.
 2. Set project root to `frontend`.
@@ -237,6 +261,7 @@ Frontend runs on `http://localhost:5173`
 - Local upload files are served from `/uploads/*`.
 - If Cloudinary env vars are set, uploaded/generated files use Cloudinary URLs.
 - Report files are generated at `/uploads/reports/*`.
+- For image fields, the frontend resolves `/uploads/...` against the backend root so production URLs work on Render and Vercel.
 - Rejection reason is mandatory when rejecting approvals.
 - Faculty can edit/delete only their own pending entries.
 - AI module works in two modes:
@@ -248,4 +273,7 @@ Frontend runs on `http://localhost:5173`
 - Backend smoke and load checks:
   - `cd backend && npm run qa:register`
   - `cd backend && npm run qa:smoke`
+- Profile photo migration:
+  - `cd backend && npm run migrate:profile-photos -- --dry-run`
+  - `cd backend && npm run migrate:profile-photos`
   - `cd backend && npm run load:check`
