@@ -11,7 +11,8 @@
     "seed:admin": "node src/seeds/upsertAdmin.js",
     "qa:smoke": "node src/scripts/qaApiSmoke.js",
     "qa:register": "node src/scripts/registerSecuritySmoke.js",
-    "load:check": "node src/scripts/loadCheck.js"
+    "load:check": "node src/scripts/loadCheck.js",
+    "migrate:profile-photos": "node src/scripts/migrateProfilePhotoUrls.js"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",
